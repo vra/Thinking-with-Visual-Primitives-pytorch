@@ -51,6 +51,8 @@ def build_model(cfg: dict):
         freeze_vision_tower=cfg.get("freeze_vision_tower", True),
         freeze_llm=cfg.get("freeze_llm", False),
         torch_dtype=getattr(torch, cfg.get("torch_dtype", "bfloat16")),
+        load_in_4bit=cfg.get("load_in_4bit", False),
+        load_in_8bit=cfg.get("load_in_8bit", False),
     )
 
     if cfg.get("use_lora", False):
@@ -112,16 +114,9 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logg
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["labels"].to(device)
 
-        pixel_values = None
-        if "pixel_values" in batch:
-            pixel_values = batch["pixel_values"].to(device)
-
-        outputs = model(
-            pixel_values=pixel_values,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            labels=labels,
-        )
+        # Move all tensor items to device and pass to model
+        model_inputs = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
+        outputs = model(**model_inputs)
         loss = outputs.loss / grad_accum
         loss.backward()
 
@@ -178,8 +173,22 @@ def main():
     start_epoch = 0
     global_step = 0
     if args.resume:
-        start_epoch, global_step = load_checkpoint(args.resume, model, optimizer, scheduler, device)
-        start_epoch += 1
+        resume_path = Path(args.resume)
+        # Check if resume path is a PEFT adapter directory (adapter-only save)
+        if resume_path.is_dir() and (resume_path / "adapter_config.json").exists():
+            from peft import PeftModel
+            # model.vlm is already wrapped by get_peft_model in build_model.
+            # We need to replace it with a PeftModel loaded from the saved adapter.
+            # First, unwrap to get the base model.
+            base_model = model.vlm.model if isinstance(model.vlm, PeftModel) else model.vlm
+            model.vlm = PeftModel.from_pretrained(base_model, str(resume_path))
+            # Try to infer epoch from directory name (e.g., epoch_0 -> start at epoch 1)
+            if resume_path.name.startswith("epoch_"):
+                start_epoch = int(resume_path.name.split("_")[-1]) + 1
+            logger.info(f"Resumed PEFT adapter from {resume_path}, starting at epoch {start_epoch}")
+        else:
+            start_epoch, global_step = load_checkpoint(args.resume, model, optimizer, scheduler, device)
+            start_epoch += 1
 
     grad_accum = cfg.get("gradient_accumulation_steps", 1)
     for epoch in range(start_epoch, cfg["epochs"]):

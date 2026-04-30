@@ -355,13 +355,24 @@ report_to: "none"
 
 ## 10. 引用
 
-如果本项目对你的研究有帮助，请引用原论文：
+如果本项目对你的研究有帮助，请引用原论文及本代码仓库：
 
 ```bibtex
 @article{lu2026thinking,
   title={Thinking with Visual Primitives},
   author={Lu, Ruijie and Ma, Yiyang and Chen, Xiaokang and others},
   journal={arXiv preprint arXiv:2506.00000},
+  year={2026}
+}
+```
+
+同时也请引用本 PyTorch 复现仓库：
+
+```bibtex
+@misc{thinking2026pytorch,
+  title={Thinking with Visual Primitives — PyTorch Implementation},
+  author={Wang, Yunfeng},
+  howpublished={\url{https://github.com/vra/Thinking-with-Visual-Primitives-pytorch}},
   year={2026}
 }
 ```

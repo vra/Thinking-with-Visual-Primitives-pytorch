@@ -48,6 +48,8 @@ def build_model(cfg):
         freeze_vision_tower=cfg.get("freeze_vision_tower", True),
         freeze_llm=cfg.get("freeze_llm", False),
         torch_dtype=getattr(torch, cfg.get("torch_dtype", "bfloat16")),
+        load_in_4bit=cfg.get("load_in_4bit", False),
+        load_in_8bit=cfg.get("load_in_8bit", False),
     )
     return model
 
@@ -59,6 +61,8 @@ def build_teacher_models(cfg, device):
             model_name_or_path=path,
             torch_dtype=getattr(torch, cfg.get("torch_dtype", "bfloat16")),
             device_map=str(device),
+            load_in_4bit=cfg.get("load_in_4bit", False),
+            load_in_8bit=cfg.get("load_in_8bit", False),
         )
         t.eval()
         for p in t.parameters():
@@ -146,28 +150,19 @@ def main():
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
-            pixel_values = batch.get("pixel_values")
-            if pixel_values is not None:
-                pixel_values = pixel_values.to(device)
+            # Move all tensor items to device
+            model_inputs = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
 
             # Student forward
-            student_outputs = student(
-                pixel_values=pixel_values,
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                labels=labels,
-            )
+            student_outputs = student(**model_inputs)
             student_logits = student_outputs.logits
 
-            # Teacher forwards (no grad)
+            # Teacher forwards (no grad) — remove labels for inference
+            teacher_inputs = {k: v for k, v in model_inputs.items() if k != "labels"}
             kl_losses = []
             with torch.no_grad():
                 for teacher in teachers:
-                    teacher_outputs = teacher(
-                        pixel_values=pixel_values,
-                        input_ids=input_ids,
-                        attention_mask=attention_mask,
-                    )
+                    teacher_outputs = teacher(**teacher_inputs)
                     kl = compute_kl_loss(student_logits, teacher_outputs.logits, attention_mask)
                     kl_losses.append(kl)
 

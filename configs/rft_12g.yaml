@@ -1,0 +1,36 @@
+# 统一 RFT - 适配 12G 显存 (4070 Ti)
+
+base_model: "outputs/pretrain/final"
+freeze_vision_tower: true
+freeze_llm: false
+use_lora: true
+lora_r: 16
+lora_alpha: 32
+lora_target_modules:
+  - "q_proj"
+  - "k_proj"
+  - "v_proj"
+  - "o_proj"
+  - "gate_proj"
+  - "up_proj"
+  - "down_proj"
+lora_dropout: 0.05
+torch_dtype: "bfloat16"
+
+load_in_4bit: true
+load_in_8bit: false
+
+rft_data_path: "data/rft/rft_data.jsonl"
+min_reward: 0.5
+
+batch_size: 1
+gradient_accumulation_steps: 16
+epochs: 2
+learning_rate: 1.0e-4
+weight_decay: 0.01
+warmup_ratio: 0.03
+max_length: 1024
+image_size: 336
+num_workers: 0
+save_every: 1
+device: "cuda"

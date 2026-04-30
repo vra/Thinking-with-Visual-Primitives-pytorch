@@ -63,11 +63,10 @@ class GRPOTrainer:
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         max_new_tokens: int = 512,
+        **kwargs,
     ) -> List[str]:
         """Generate group_size rollouts for the given prompts."""
         all_texts = []
-        # Generate one at a time or in batch depending on memory
-        # For simplicity, we do batch generation by repeating inputs
         batch_size = input_ids.shape[0]
         # Repeat inputs group_size times
         if pixel_values is not None:
@@ -76,6 +75,14 @@ class GRPOTrainer:
             pixel_values_repeated = None
         input_ids_repeated = input_ids.repeat_interleave(self.group_size, dim=0)
         attention_mask_repeated = attention_mask.repeat_interleave(self.group_size, dim=0)
+
+        # Repeat any extra kwargs (e.g., image_grid_thw)
+        repeated_kwargs = {}
+        for k, v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                repeated_kwargs[k] = v.repeat_interleave(self.group_size, dim=0)
+            else:
+                repeated_kwargs[k] = v
 
         outputs = self.model.generate(
             pixel_values=pixel_values_repeated,
@@ -87,6 +94,7 @@ class GRPOTrainer:
             top_p=0.95,
             pad_token_id=self.tokenizer.pad_token_id,
             eos_token_id=self.tokenizer.eos_token_id,
+            **repeated_kwargs,
         )
         # Decode only the new tokens
         new_tokens = outputs[:, input_ids_repeated.shape[1]:]
@@ -114,12 +122,14 @@ class GRPOTrainer:
         pixel_values,
         full_input_ids,
         attention_mask,
+        **kwargs,
     ) -> torch.Tensor:
         """Compute per-token log probs for generated sequences."""
         outputs = model(
             pixel_values=pixel_values,
             input_ids=full_input_ids,
             attention_mask=attention_mask,
+            **kwargs,
         )
         logits = outputs.logits[:, :-1, :]  # (B, L-1, V)
         targets = full_input_ids[:, 1:]     # (B, L-1)
@@ -139,6 +149,7 @@ class GRPOTrainer:
         attention_mask: torch.Tensor,
         metadata_list: List[Dict],
         max_new_tokens: int = 512,
+        **kwargs,
     ) -> Dict[str, float]:
         """
         Single GRPO training step.
@@ -148,7 +159,7 @@ class GRPOTrainer:
 
         # 1. Generate rollouts
         rollouts = self._generate_rollouts(
-            pixel_values, input_ids, attention_mask, max_new_tokens
+            pixel_values, input_ids, attention_mask, max_new_tokens, **kwargs
         )
 
         # 2. Compute rewards
@@ -189,13 +200,21 @@ class GRPOTrainer:
         else:
             pixel_values_repeated = None
 
+        # Repeat extra kwargs for log prob computation
+        repeated_kwargs = {}
+        for k, v in kwargs.items():
+            if isinstance(v, torch.Tensor):
+                repeated_kwargs[k] = v.repeat_interleave(self.group_size, dim=0)
+            else:
+                repeated_kwargs[k] = v
+
         # 5. Compute log probs for current and reference policy
         seq_log_probs = self._compute_log_probs(
-            self.model, pixel_values_repeated, full_ids, full_mask
+            self.model, pixel_values_repeated, full_ids, full_mask, **repeated_kwargs
         )
         with torch.no_grad():
             ref_seq_log_probs = self._compute_log_probs(
-                self.ref_model, pixel_values_repeated, full_ids, full_mask
+                self.ref_model, pixel_values_repeated, full_ids, full_mask, **repeated_kwargs
             )
 
         # 6. Compute KL penalty
@@ -230,8 +249,13 @@ class GRPOTrainer:
                 pixel_values = pixel_values.to(self.device)
             metadata_list = batch.get("metadata", [{}] * input_ids.shape[0])
 
+            # Collect extra kwargs for VL models (e.g., image_grid_thw)
+            extra_kwargs = {k: v.to(self.device) for k, v in batch.items()
+                            if isinstance(v, torch.Tensor) and k not in
+                            ["input_ids", "attention_mask", "pixel_values", "labels", "metadata"]}
+
             step_stats = self.train_step(
-                pixel_values, input_ids, attention_mask, metadata_list, max_new_tokens
+                pixel_values, input_ids, attention_mask, metadata_list, max_new_tokens, **extra_kwargs
             )
             for k in stats:
                 stats[k] += step_stats[k]
