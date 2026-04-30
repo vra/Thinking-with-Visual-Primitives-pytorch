@@ -48,14 +48,19 @@ logs/
 *.ckpt
 *.safetensors
 
-# Data
-data/
-!data/__init__.py
-!data/collators.py
-!data/datasets_pretrain.py
-!data/datasets_sft.py
-!data/formats.py
-!data/transforms.py
+# Data directories
+data/coco/
+data/pretrain/
+data/sft/
+data/counting/
+data/spatial/
+data/maze/
+data/path/
+data/__pycache__/
+*.jsonl
+*.json
+*.jpg
+*.png
 
 # OS
 .DS_Store
