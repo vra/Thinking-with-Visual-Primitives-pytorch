@@ -46,6 +46,8 @@ def build_model(cfg):
         freeze_vision_tower=True,
         freeze_llm=False,
         torch_dtype=getattr(torch, cfg.get("torch_dtype", "bfloat16")),
+        load_in_4bit=cfg.get("load_in_4bit", False),
+        load_in_8bit=cfg.get("load_in_8bit", False),
     )
     return model
 

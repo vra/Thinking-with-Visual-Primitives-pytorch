@@ -1,0 +1,32 @@
+# RL (Point) - 适配 12G 显存 (4070 Ti)
+
+model_name_or_path: "outputs/sft_point/final"
+torch_dtype: "bfloat16"
+
+load_in_4bit: true
+load_in_8bit: false
+
+datasets:
+  - path: "data/sft/maze/maze_data.jsonl"
+    image_root: "data/sft/maze"
+    task_type: "maze"
+    weight: 1.0
+  - path: "data/sft/path/path_data.jsonl"
+    image_root: "data/sft/path"
+    task_type: "path"
+    weight: 1.0
+
+batch_size: 1
+epochs: 2
+learning_rate: 1.0e-6
+max_length: 1024
+image_size: 336
+num_workers: 0
+
+# GRPO hyperparameters
+group_size: 4
+kl_coeff: 0.04
+max_new_tokens: 512
+
+save_every: 1
+device: "cuda"

@@ -68,6 +68,8 @@ def build_model(cfg):
         freeze_vision_tower=cfg.get("freeze_vision_tower", True),
         freeze_llm=cfg.get("freeze_llm", False),
         torch_dtype=getattr(torch, cfg.get("torch_dtype", "bfloat16")),
+        load_in_4bit=cfg.get("load_in_4bit", False),
+        load_in_8bit=cfg.get("load_in_8bit", False),
     )
     if cfg.get("use_lora", False):
         lora_cfg = LoraConfig(
@@ -129,16 +131,9 @@ def main():
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
-            pixel_values = batch.get("pixel_values")
-            if pixel_values is not None:
-                pixel_values = pixel_values.to(device)
-
-            outputs = model(
-                pixel_values=pixel_values,
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                labels=labels,
-            )
+            # Move all tensor items to device and pass to model
+            model_inputs = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
+            outputs = model(**model_inputs)
             loss = outputs.loss / grad_accum
             loss.backward()
 

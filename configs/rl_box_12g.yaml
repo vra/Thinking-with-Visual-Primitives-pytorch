@@ -1,0 +1,33 @@
+# RL (Box) - 适配 12G 显存 (4070 Ti)
+# GRPO 需要同时加载 policy 和 ref_model，显存压力大
+
+model_name_or_path: "outputs/sft_box/final"
+torch_dtype: "bfloat16"
+
+load_in_4bit: true
+load_in_8bit: false
+
+datasets:
+  - path: "data/sft/counting/counting_data.jsonl"
+    image_root: "data/coco/val"
+    task_type: "counting"
+    weight: 1.0
+  - path: "data/sft/spatial/spatial_data.jsonl"
+    image_root: "data/sft/spatial"
+    task_type: "spatial"
+    weight: 1.0
+
+batch_size: 1
+epochs: 2
+learning_rate: 1.0e-6
+max_length: 1024
+image_size: 336
+num_workers: 0
+
+# GRPO hyperparameters
+group_size: 4
+kl_coeff: 0.04
+max_new_tokens: 512
+
+save_every: 1
+device: "cuda"
