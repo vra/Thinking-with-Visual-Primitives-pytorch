@@ -122,9 +122,10 @@ class GRPOTrainer:
         pixel_values,
         full_input_ids,
         attention_mask,
+        prompt_len: int = 0,
         **kwargs,
     ) -> torch.Tensor:
-        """Compute per-token log probs for generated sequences."""
+        """Compute per-token log probs for generated (response) tokens only."""
         outputs = model(
             pixel_values=pixel_values,
             input_ids=full_input_ids,
@@ -135,8 +136,10 @@ class GRPOTrainer:
         targets = full_input_ids[:, 1:]     # (B, L-1)
         log_probs = F.log_softmax(logits, dim=-1)
         token_log_probs = log_probs.gather(dim=-1, index=targets.unsqueeze(-1)).squeeze(-1)
-        # Mask padding
+        # Mask: only count response tokens (after prompt) and non-padding
         mask = attention_mask[:, 1:].float()
+        if prompt_len > 0:
+            mask[:, :prompt_len - 1] = 0.0  # mask out prompt tokens
         token_log_probs = token_log_probs * mask
         # Sum over sequence
         seq_log_probs = token_log_probs.sum(dim=-1) / mask.sum(dim=-1).clamp(min=1)
@@ -208,21 +211,31 @@ class GRPOTrainer:
             else:
                 repeated_kwargs[k] = v
 
+        prompt_len = input_ids.shape[1]
+
         # 5. Compute log probs for current and reference policy
         seq_log_probs = self._compute_log_probs(
-            self.model, pixel_values_repeated, full_ids, full_mask, **repeated_kwargs
+            self.model, pixel_values_repeated, full_ids, full_mask,
+            prompt_len=prompt_len, **repeated_kwargs
         )
         with torch.no_grad():
             ref_seq_log_probs = self._compute_log_probs(
-                self.ref_model, pixel_values_repeated, full_ids, full_mask, **repeated_kwargs
+                self.ref_model, pixel_values_repeated, full_ids, full_mask,
+                prompt_len=prompt_len, **repeated_kwargs
             )
+            # Store old log probs for importance ratio (before gradient update)
+            old_seq_log_probs = seq_log_probs.detach()
 
         # 6. Compute KL penalty
         kl_div = seq_log_probs - ref_seq_log_probs  # approx KL
 
-        # 7. Policy loss (simplified PPO-style)
-        # ratio = exp(log_prob - ref_log_prob) but in GRPO we directly use advantage
-        loss = -(seq_log_probs * advantages).mean() + self.kl_coeff * kl_div.mean()
+        # 7. Policy loss with clipped surrogate objective (PPO-style, per GRPO)
+        log_ratio = seq_log_probs - old_seq_log_probs
+        ratio = torch.exp(log_ratio)
+        clipped_ratio = torch.clamp(ratio, 1.0 - self.clip_eps, 1.0 + self.clip_eps)
+        surr1 = ratio * advantages
+        surr2 = clipped_ratio * advantages
+        loss = -torch.min(surr1, surr2).mean() + self.kl_coeff * kl_div.mean()
 
         self.optimizer.zero_grad()
         loss.backward()

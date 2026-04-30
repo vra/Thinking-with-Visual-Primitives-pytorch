@@ -132,39 +132,82 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
     writer = open(output_path, "w")
 
+    # Collect all rollouts grouped by (batch_idx, expert)
+    all_records = []  # list of dicts with rollout info
     sample_idx = 0
     for batch in tqdm(dataloader, desc="RFT generation"):
         metadata_list = batch.get("metadata", [{}] * args.batch_size)
+        batch_size = batch["input_ids"].shape[0]
 
         for expert_name, expert in [("box", expert_box), ("point", expert_point)]:
-            texts = expert.generate(
-                pixel_values=batch.get("pixel_values"),
-                input_ids=batch["input_ids"].to(device),
-                attention_mask=batch["attention_mask"].to(device),
-                max_new_tokens=args.max_new_tokens,
-                do_sample=True,
-                temperature=0.9,
-                top_p=0.95,
-            )
+            # Generate N rollouts per sample
+            for rollout_idx in range(args.num_rollouts):
+                texts = expert.generate(
+                    pixel_values=batch.get("pixel_values"),
+                    input_ids=batch["input_ids"].to(device),
+                    attention_mask=batch["attention_mask"].to(device),
+                    max_new_tokens=args.max_new_tokens,
+                    do_sample=True,
+                    temperature=0.9,
+                    top_p=0.95,
+                )
 
-            for i, text in enumerate(texts):
-                meta = metadata_list[i] if i < len(metadata_list) else {}
-                # Compute reward
-                rewards = [fn(text, meta) for fn in reward_fns]
-                avg_reward = sum(rewards) / len(rewards)
+                for i, text in enumerate(texts):
+                    meta = metadata_list[i] if i < len(metadata_list) else {}
+                    rewards = [fn(text, meta) for fn in reward_fns]
+                    avg_reward = sum(rewards) / len(rewards)
 
-                rec = {
-                    "sample_idx": sample_idx,
-                    "expert": expert_name,
-                    "text": text,
-                    "rewards": rewards,
-                    "avg_reward": avg_reward,
-                    "metadata": meta,
-                }
-                writer.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                sample_idx += 1
+                    all_records.append({
+                        "sample_key": f"{sample_idx + i}_{expert_name}",
+                        "rollout_idx": rollout_idx,
+                        "expert": expert_name,
+                        "text": text,
+                        "rewards": rewards,
+                        "avg_reward": avg_reward,
+                        "metadata": meta,
+                    })
 
-    writer.close()
+            sample_idx += batch_size
+
+    # Group rollouts by sample_key and categorize difficulty
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for rec in all_records:
+        grouped[rec["sample_key"]].append(rec)
+
+    easy_samples = []
+    normal_samples = []
+    hard_samples = []
+    reward_threshold = 0.7
+
+    for key, rollouts in grouped.items():
+        rewards = [r["avg_reward"] for r in rollouts]
+        difficulty = categorize_difficulty(rewards, args.num_rollouts)
+        # Pick the best rollout for each sample
+        best_rollout = max(rollouts, key=lambda r: r["avg_reward"])
+        best_rollout["difficulty"] = difficulty
+
+        if difficulty == "easy":
+            easy_samples.append(best_rollout)
+        elif difficulty == "normal":
+            normal_samples.append(best_rollout)
+        else:
+            hard_samples.append(best_rollout)
+
+    # Per paper: retain Normal-Level + 5% Easy-Level
+    easy_subsample_size = max(1, int(len(easy_samples) * 0.05))
+    random.shuffle(easy_samples)
+    retained = normal_samples + easy_samples[:easy_subsample_size]
+
+    print(f"Difficulty distribution: Easy={len(easy_samples)}, "
+          f"Normal={len(normal_samples)}, Hard={len(hard_samples)}")
+    print(f"Retained: {len(retained)} samples "
+          f"(Normal={len(normal_samples)} + 5% Easy={easy_subsample_size})")
+
+    with open(output_path, "w") as writer:
+        for rec in retained:
+            writer.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
     print(f"RFT data saved to {output_path}")
 
 

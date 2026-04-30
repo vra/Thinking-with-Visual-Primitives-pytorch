@@ -15,44 +15,77 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 
+def _de_casteljau(control_points: List[Tuple[float, float]], t: float) -> Tuple[float, float]:
+    """Evaluate a Bézier curve at parameter t using De Casteljau's algorithm."""
+    pts = list(control_points)
+    while len(pts) > 1:
+        pts = [
+            ((1 - t) * pts[i][0] + t * pts[i + 1][0],
+             (1 - t) * pts[i][1] + t * pts[i + 1][1])
+            for i in range(len(pts) - 1)
+        ]
+    return pts[0]
+
+
 def generate_curve(
     start: Tuple[int, int],
     end: Tuple[int, int],
     num_control_points: int = 3,
     curvature: float = 1.0,
 ) -> List[Tuple[int, int]]:
-    """Generate a smooth curved path from start to end using Bezier-like interpolation."""
-    points = [start]
-    # Random control points
-    for _ in range(num_control_points):
-        x = random.randint(min(start[0], end[0]), max(start[0], end[0]))
-        y = random.randint(min(start[1], end[1]), max(start[1], end[1]))
-        # Add some random offset for curvature
-        x += int((random.random() - 0.5) * curvature * 100)
-        y += int((random.random() - 0.5) * curvature * 100)
-        x = max(0, min(999, x))
-        y = max(0, min(999, y))
-        points.append((x, y))
-    points.append(end)
+    """Generate a smooth curved path from start to end using Bézier curves.
 
-    # Interpolate smooth path
-    path = []
+    Per the paper: "We generate images which consist of multiple Bézier curves."
+    Uses De Casteljau's algorithm for evaluation.
+    """
+    # Build control points: start, random intermediates, end
+    control_pts = [start]
+    for _ in range(num_control_points):
+        # Interpolate between start and end, then add random offset for curvature
+        frac = random.random()
+        base_x = start[0] + frac * (end[0] - start[0])
+        base_y = start[1] + frac * (end[1] - start[1])
+        offset_x = (random.random() - 0.5) * curvature * 200
+        offset_y = (random.random() - 0.5) * curvature * 200
+        x = max(0, min(999, int(base_x + offset_x)))
+        y = max(0, min(999, int(base_y + offset_y)))
+        control_pts.append((x, y))
+    control_pts.append(end)
+
+    # Sort intermediate control points by their projection onto start->end axis
+    # to avoid self-intersecting curves
+    if len(control_pts) > 2:
+        dx = end[0] - start[0]
+        dy = end[1] - start[1]
+        length_sq = dx * dx + dy * dy
+        if length_sq > 0:
+            intermediates = control_pts[1:-1]
+            intermediates.sort(key=lambda p: ((p[0] - start[0]) * dx + (p[1] - start[1]) * dy) / length_sq)
+            control_pts = [start] + intermediates + [end]
+
+    # Evaluate Bézier curve at uniform parameter values
     n_segments = 50
+    path = []
     for i in range(n_segments + 1):
         t = i / n_segments
-        # Simple spline interpolation through points
-        x = int(np.interp(t, np.linspace(0, 1, len(points)), [p[0] for p in points]))
-        y = int(np.interp(t, np.linspace(0, 1, len(points)), [p[1] for p in points]))
-        path.append((x, y))
+        x, y = _de_casteljau(control_pts, t)
+        path.append((int(x), int(y)))
     return path
 
 
 def generate_crossing_lines(
     img_size: int = 800,
     num_lines: int = 3,
+    uniform_style: bool = False,
 ) -> Tuple[Image.Image, List[Tuple[int, int]], str, str]:
     """
-    Generate an image with multiple curved lines crossing each other.
+    Generate an image with multiple curved Bézier lines crossing each other.
+
+    Args:
+        uniform_style: If True, all lines share the same color and stroke width,
+            stripping away color-based shortcuts and forcing the model to rely
+            solely on curvature continuity at crossings (per paper).
+
     Returns:
       image, target_path_points, start_label, end_label
     """
@@ -69,19 +102,32 @@ def generate_crossing_lines(
                    "moon", "sun", "cloud", "tree", "flower", "fish", "bird"]
     chosen_labels = random.sample(labels_pool, num_lines + 1)
 
+    # Uniform style: same color and width for all lines
+    if uniform_style:
+        uniform_color = "black"
+        uniform_width = 3
+    else:
+        uniform_color = None
+        uniform_width = None
+
     for i in range(num_lines):
         start = (random.randint(50, img_size - 50), random.randint(50, img_size - 50))
         end = (random.randint(50, img_size - 50), random.randint(50, img_size - 50))
         path = generate_curve(start, end, num_control_points=random.randint(2, 5))
-        color = random.choice(["red", "blue", "green", "purple", "orange", "black"])
-        lines.append({"path": path, "color": color, "start": chosen_labels[i], "end": chosen_labels[i+1]})
+        color = uniform_color if uniform_style else random.choice(
+            ["red", "blue", "green", "purple", "orange", "black"])
+        width = uniform_width if uniform_style else random.randint(2, 4)
+        lines.append({
+            "path": path, "color": color, "width": width,
+            "start": chosen_labels[i], "end": chosen_labels[i + 1],
+        })
 
     # Draw all lines
     for line in lines:
         pts = line["path"]
         # Scale to image size
         img_pts = [(int(x / 999 * img_size), int(y / 999 * img_size)) for x, y in pts]
-        draw.line(img_pts, fill=line["color"], width=random.randint(2, 4))
+        draw.line(img_pts, fill=line["color"], width=line["width"])
 
     # Pick one line as target
     target = random.choice(lines)
@@ -141,7 +187,10 @@ def main():
     records = []
     for i in range(args.num_samples):
         num_lines = random.randint(args.min_lines, args.max_lines)
-        img, path, start_label, end_label = generate_crossing_lines(num_lines=num_lines)
+        # 30% of samples use uniform style (per paper: forces curvature-based reasoning)
+        use_uniform = random.random() < 0.3
+        img, path, start_label, end_label = generate_crossing_lines(
+            num_lines=num_lines, uniform_style=use_uniform)
         img_path = img_dir / f"path_{i:06d}.png"
         img.save(img_path)
 

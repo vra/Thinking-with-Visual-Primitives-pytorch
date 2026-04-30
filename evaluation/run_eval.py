@@ -61,7 +61,7 @@ def evaluate_counting(model, dataloader, device) -> Dict:
             attention_mask=attention_mask,
             max_new_tokens=256,
         )
-        metadata_list = batch.get("metadata", [{}] * len(texts)])
+        metadata_list = batch.get("metadata", [{}] * len(texts))
         for text, meta in zip(texts, metadata_list):
             gt = meta.get("count", 0)
             if metrics.counting_exact_match(text, gt):
@@ -93,7 +93,7 @@ def evaluate_spatial(model, dataloader, device) -> Dict:
             attention_mask=attention_mask,
             max_new_tokens=256,
         )
-        metadata_list = batch.get("metadata", [{}] * len(texts)])
+        metadata_list = batch.get("metadata", [{}] * len(texts))
         for text, meta in zip(texts, metadata_list):
             gt = meta.get("answer", "")
             if metrics.vqa_accuracy(text, gt):
@@ -120,7 +120,7 @@ def evaluate_maze(model, dataloader, device) -> Dict:
             attention_mask=attention_mask,
             max_new_tokens=512,
         )
-        metadata_list = batch.get("metadata", [{}] * len(texts)])
+        metadata_list = batch.get("metadata", [{}] * len(texts))
         for text, meta in zip(texts, metadata_list):
             solvable = meta.get("solvable", True)
             if metrics.maze_answer_correctness(text, solvable):
@@ -154,7 +154,7 @@ def evaluate_path(model, dataloader, device) -> Dict:
             attention_mask=attention_mask,
             max_new_tokens=512,
         )
-        metadata_list = batch.get("metadata", [{}] * len(texts)])
+        metadata_list = batch.get("metadata", [{}] * len(texts))
         for text, meta in zip(texts, metadata_list):
             gt_label = meta.get("end_label", "")
             gt_points = meta.get("points", [])

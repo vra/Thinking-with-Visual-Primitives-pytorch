@@ -99,16 +99,17 @@ def build_dataloader(cfg, tokenizer):
 
 def compute_kl_loss(student_logits, teacher_logits, attention_mask):
     """
-    Reverse KL: D_KL(student || teacher).
+    Reverse KL: D_KL(π_θ || π_E) = Σ π_θ(x) * (log π_θ(x) - log π_E(x)).
+    Per the paper: L_OPD = Σ w_i * D_KL(π_θ || π_Ei).
     We compute per-token KL and average over valid tokens.
     """
     # student_logits, teacher_logits: (B, L, V)
     student_log_probs = F.log_softmax(student_logits, dim=-1)
     teacher_log_probs = F.log_softmax(teacher_logits, dim=-1)
-    teacher_probs = teacher_log_probs.exp()
+    student_probs = student_log_probs.exp()
 
-    # KL = Σ p_teacher * (log p_teacher - log p_student)
-    kl = (teacher_probs * (teacher_log_probs - student_log_probs)).sum(dim=-1)
+    # Reverse KL: D_KL(student || teacher) = Σ p_student * (log p_student - log p_teacher)
+    kl = (student_probs * (student_log_probs - teacher_log_probs)).sum(dim=-1)
     mask = attention_mask.float()
     kl = (kl * mask).sum() / mask.sum().clamp(min=1)
     return kl

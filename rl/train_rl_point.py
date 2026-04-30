@@ -1,7 +1,7 @@
 """
-Specialized RL training for Thinking with Grounding (ETwG).
+Specialized RL training for Thinking with Pointing (ETwP).
 
-Uses GRPO to optimize the box-specialized SFT model.
+Uses GRPO to optimize the point-specialized SFT model.
 """
 
 import os

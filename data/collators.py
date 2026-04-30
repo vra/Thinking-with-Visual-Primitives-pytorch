@@ -128,33 +128,57 @@ class ConversationCollator:
             else:
                 raise
 
-        # Build labels: mask user/system tokens, keep assistant tokens
+        # Build labels: mask user/system tokens, keep only assistant tokens for loss
         input_ids = inputs["input_ids"]
         labels = input_ids.clone()
 
-        # For each sequence, find the assistant response boundary
-        # Qwen2.5 uses im_start/im_end tokens; assistant content follows "assistant\n"
+        # Qwen2.5-VL uses <|im_start|> and <|im_end|> to delimit turns.
+        # Format: <|im_start|>system\n...<|im_end|>\n<|im_start|>user\n...<|im_end|>\n<|im_start|>assistant\n...<|im_end|>
+        # We mask everything except the assistant turn content.
+        im_start_id = self.tokenizer.convert_tokens_to_ids("<|im_start|>")
+        im_end_id = self.tokenizer.convert_tokens_to_ids("<|im_end|>")
+        # Encode "assistant" to find the role token(s)
+        assistant_token_ids = self.tokenizer.encode("assistant", add_special_tokens=False)
+
         for b in range(input_ids.shape[0]):
             seq = input_ids[b].tolist()
-            # Try to find assistant turn start
-            assistant_start = None
-            # Search for the pattern indicating assistant start
-            for i in range(len(seq) - 1):
-                # Heuristic: after im_start + assistant token
-                if i + 1 < len(seq):
-                    # Different tokenizers use different formats
-                    # We'll try to mask everything before the last assistant marker
-                    pass
-            if assistant_start is None:
-                # Fallback: mask first 50% of tokens (rough heuristic)
-                assistant_start = len(seq) // 2
+            seq_len = len(seq)
+            # Default: mask everything
+            mask = [True] * seq_len  # True = masked (set to -100)
 
-            # Actually, let's use a simpler approach: if we have generation prompt
-            # separator, we can detect it. But for now, we'll compute loss on all tokens.
-            # This is suboptimal but works for pretraining/SFT.
-            pass
+            # Find all assistant turns and unmask them
+            i = 0
+            while i < seq_len:
+                # Look for <|im_start|>
+                if seq[i] == im_start_id:
+                    # Check if this is an assistant turn
+                    # The role tokens follow immediately after <|im_start|>
+                    role_end = min(i + 1 + len(assistant_token_ids), seq_len)
+                    role_tokens = seq[i + 1:role_end]
+                    if role_tokens == assistant_token_ids:
+                        # Find the newline after "assistant\n" — content starts after it
+                        content_start = role_end
+                        # Skip past the newline
+                        while content_start < seq_len and seq[content_start] in [
+                            self.tokenizer.convert_tokens_to_ids("\n"),
+                            10,  # common newline token id
+                        ]:
+                            content_start += 1
+                        # Find the matching <|im_end|>
+                        content_end = content_start
+                        while content_end < seq_len and seq[content_end] != im_end_id:
+                            content_end += 1
+                        # Unmask assistant content (including <|im_end|> for learning to stop)
+                        for j in range(content_start, min(content_end + 1, seq_len)):
+                            mask[j] = False
+                i += 1
 
-        # Simpler: compute loss on all non-padding tokens
+            # Apply mask
+            for j in range(seq_len):
+                if mask[j]:
+                    labels[b, j] = -100
+
+        # Also mask padding tokens
         labels[labels == self.tokenizer.pad_token_id] = -100
 
         result = {

@@ -1,8 +1,8 @@
 """
-Specialized SFT for Thinking with Grounding (FTwG).
+Specialized SFT for Thinking with Pointing (FTwP).
 
-Trains the model to output bounding boxes as visual primitives during reasoning.
-Tasks: Counting, Spatial Reasoning, General VQA.
+Trains the model to output points as visual primitives during reasoning.
+Tasks: Maze Navigation, Path Tracing.
 """
 
 import os
