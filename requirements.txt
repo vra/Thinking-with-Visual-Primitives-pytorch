@@ -1,0 +1,27 @@
+# Core
+torch>=2.0.0
+transformers>=4.40.0
+accelerate>=0.30.0
+peft>=0.11.0
+
+# Quantization (optional, for 12GB or smaller GPUs)
+bitsandbytes>=0.43.0
+
+# Data
+datasets>=2.19.0
+Pillow>=10.0.0
+numpy>=1.24.0
+opencv-python>=4.9.0
+scipy>=1.12.0
+
+# Training utilities
+tqdm>=4.65.0
+wandb>=0.17.0
+pyyaml>=6.0
+
+# Visualization
+matplotlib>=3.8.0
+
+# Tokenization
+sentencepiece>=0.2.0
+protobuf>=4.25.0

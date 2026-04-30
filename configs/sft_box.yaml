@@ -1,0 +1,43 @@
+# 专家 SFT (Box) - 适配 24G 显存
+
+model_name_or_path: "outputs/pretrain/final"
+freeze_vision_tower: true
+freeze_llm: false
+use_lora: true
+lora_r: 128
+lora_alpha: 256
+lora_target_modules:
+  - "q_proj"
+  - "k_proj"
+  - "v_proj"
+  - "o_proj"
+  - "gate_proj"
+  - "up_proj"
+  - "down_proj"
+lora_dropout: 0.05
+torch_dtype: "bfloat16"
+
+load_in_4bit: false
+load_in_8bit: false
+
+datasets:
+  - path: "data/sft/counting/counting_data.jsonl"
+    image_root: "data/coco/val/images"
+    task_type: "counting"
+    weight: 1.0
+  - path: "data/sft/spatial/spatial_data.jsonl"
+    image_root: "data/sft/spatial/images"
+    task_type: "spatial"
+    weight: 1.0
+
+batch_size: 2
+gradient_accumulation_steps: 8
+epochs: 3
+learning_rate: 1.0e-4
+weight_decay: 0.01
+warmup_ratio: 0.03
+max_length: 4096
+image_size: 448
+num_workers: 4
+save_every: 1
+device: "cuda"

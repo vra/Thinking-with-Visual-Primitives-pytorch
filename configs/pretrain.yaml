@@ -1,0 +1,42 @@
+# 预训练配置 - 适配 24G 显存 (bf16 + LoRA)
+# Qwen2.5-VL-7B bf16 推理约 16G，训练 activation 额外约 6-8G
+# batch_size=2 + gradient_accumulation=8 模拟有效 batch=16
+
+model_name_or_path: "Qwen/Qwen2.5-VL-7B-Instruct"
+use_spatial_compression: false
+freeze_vision_tower: true
+freeze_llm: false
+use_lora: true
+lora_r: 128
+lora_alpha: 256
+lora_target_modules:
+  - "q_proj"
+  - "k_proj"
+  - "v_proj"
+  - "o_proj"
+  - "gate_proj"
+  - "up_proj"
+  - "down_proj"
+lora_dropout: 0.05
+torch_dtype: "bfloat16"
+
+# 4bit 量化开关（默认关闭，24G 无需开启）
+load_in_4bit: false
+load_in_8bit: false
+
+dataset_type: "jsonl"
+data_path: "data/pretrain/grounding.jsonl"
+image_root: "data/coco/val/images"
+
+batch_size: 2
+gradient_accumulation_steps: 8
+epochs: 3
+learning_rate: 2.0e-4
+weight_decay: 0.01
+warmup_ratio: 0.03
+max_length: 2048
+image_size: 448
+num_workers: 4
+
+save_every: 1
+device: "cuda"

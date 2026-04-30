@@ -1,0 +1,49 @@
+# OPD 蒸馏 - 适配 24G 显存
+# 需要同时加载 student + 2 teachers，显存压力大
+# 使用 batch_size=1，必要时可开启 4bit
+
+student_model: "outputs/rft/final"
+teacher_models:
+  - "outputs/rl_box/final"
+  - "outputs/rl_point/final"
+teacher_weights:
+  - 0.5
+  - 0.5
+
+freeze_vision_tower: true
+freeze_llm: false
+torch_dtype: "bfloat16"
+
+load_in_4bit: false
+load_in_8bit: false
+
+datasets:
+  - path: "data/sft/counting/counting_data.jsonl"
+    image_root: "data/coco/val/images"
+    task_type: "counting"
+    weight: 1.0
+  - path: "data/sft/spatial/spatial_data.jsonl"
+    image_root: "data/sft/spatial/images"
+    task_type: "spatial"
+    weight: 1.0
+  - path: "data/sft/maze/maze_data.jsonl"
+    image_root: "data/sft/maze"
+    task_type: "maze"
+    weight: 1.0
+  - path: "data/sft/path/path_data.jsonl"
+    image_root: "data/sft/path"
+    task_type: "path"
+    weight: 1.0
+
+batch_size: 1
+gradient_accumulation_steps: 8
+epochs: 2
+learning_rate: 5.0e-7
+ce_coeff: 0.1
+weight_decay: 0.01
+warmup_ratio: 0.03
+max_length: 2048
+image_size: 448
+num_workers: 2
+save_every: 1
+device: "cuda"

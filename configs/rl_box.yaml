@@ -1,0 +1,34 @@
+# RL (Box) - 适配 24G 显存
+# GRPO 需要同时加载 policy 和 ref_model，显存翻倍
+# 因此 batch_size 保持 1-2，group_size=4
+
+model_name_or_path: "outputs/sft_box/final"
+torch_dtype: "bfloat16"
+
+load_in_4bit: false
+load_in_8bit: false
+
+datasets:
+  - path: "data/sft/counting/counting_data.jsonl"
+    image_root: "data/coco/val/images"
+    task_type: "counting"
+    weight: 1.0
+  - path: "data/sft/spatial/spatial_data.jsonl"
+    image_root: "data/sft/spatial/images"
+    task_type: "spatial"
+    weight: 1.0
+
+batch_size: 1
+epochs: 2
+learning_rate: 1.0e-6
+max_length: 2048
+image_size: 448
+num_workers: 2
+
+# GRPO hyperparameters
+group_size: 4
+kl_coeff: 0.04
+max_new_tokens: 512
+
+save_every: 1
+device: "cuda"
