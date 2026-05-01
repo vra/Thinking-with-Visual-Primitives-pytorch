@@ -1,7 +1,7 @@
 # 预训练配置 - 适配 12G 显存 (4070 Ti)
-# 4-bit量化 + bf16 + LoRA(r=64)
+# Qwen2-VL-2B fp16/bf16 + LoRA(r=16), 无 4-bit 量化
 
-model_name_or_path: "Qwen/Qwen2.5-VL-7B-Instruct"
+model_name_or_path: "Qwen/Qwen2-VL-2B-Instruct"
 use_spatial_compression: false
 freeze_vision_tower: true
 freeze_llm: false
@@ -19,21 +19,21 @@ lora_target_modules:
 lora_dropout: 0.05
 torch_dtype: "bfloat16"
 
-# 12G必须开启4bit
-load_in_4bit: true
+# 2B 模型 fp16 约 4GB，12G 显存不需要 4-bit
+load_in_4bit: false
 load_in_8bit: false
 
 dataset_type: "jsonl"
 data_path: "data/pretrain/grounding.jsonl"
 image_root: "data/coco/val"
 
-batch_size: 1
-gradient_accumulation_steps: 16
+batch_size: 2
+gradient_accumulation_steps: 8
 epochs: 3
 learning_rate: 1.0e-4
 weight_decay: 0.01
-warmup_ratio: 0.0
-max_grad_norm: 0.5
+warmup_ratio: 0.03
+max_grad_norm: 1.0
 max_length: 512
 image_size: 224
 num_workers: 0

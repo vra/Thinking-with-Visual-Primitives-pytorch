@@ -67,8 +67,10 @@ def single_inference(model, tokenizer, image_path: str, prompt: str, max_new_tok
     text = tokenizer.apply_chat_template(conv, tokenize=False, add_generation_prompt=True)
 
     from transformers import AutoProcessor
+    # For adapter directories, load processor from base model path
+    processor_path = getattr(model, "base_model_path", tokenizer.name_or_path)
     try:
-        processor = AutoProcessor.from_pretrained(tokenizer.name_or_path, trust_remote_code=True)
+        processor = AutoProcessor.from_pretrained(processor_path, trust_remote_code=True)
     except Exception:
         processor = None
 

@@ -91,11 +91,13 @@ class VisualPrimitiveVLM(nn.Module):
             self.vlm = AutoModelForVision2Seq.from_pretrained(base_model_path, **load_kwargs)
             self.vlm.resize_token_embeddings(len(self.tokenizer))
             self.vlm.load_adapter(model_name_or_path)
+            self.base_model_path = base_model_path
         else:
             load_kwargs["pretrained_model_name_or_path"] = model_name_or_path
             self.vlm = AutoModelForVision2Seq.from_pretrained(**load_kwargs)
             # Resize token embeddings for new special tokens
             self.vlm.resize_token_embeddings(len(self.tokenizer))
+            self.base_model_path = model_name_or_path
 
         # Optionally freeze components
         if freeze_vision_tower:
@@ -150,11 +152,8 @@ class VisualPrimitiveVLM(nn.Module):
                 p.requires_grad = False
 
     def _patch_qwen25vl_patch_embed(self):
-        """Replace .view() with .reshape() in Qwen2.5-VL patch_embed for 4-bit compatibility."""
-        try:
-            from transformers.models.qwen2_5_vl.modeling_qwen2_5_vl import Qwen2_5_VisionPatchEmbed
-            original_forward = Qwen2_5_VisionPatchEmbed.forward
-
+        """Replace .view() with .reshape() in Qwen2.5-VL / Qwen2-VL patch_embed for 4-bit compatibility."""
+        def _make_patched_forward(original_forward):
             def patched_forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
                 target_dtype = self.proj.weight.dtype
                 hidden_states = hidden_states.reshape(
@@ -162,8 +161,19 @@ class VisualPrimitiveVLM(nn.Module):
                 )
                 hidden_states = self.proj(hidden_states.to(dtype=target_dtype)).reshape(-1, self.embed_dim)
                 return hidden_states
+            return patched_forward
 
-            Qwen2_5_VisionPatchEmbed.forward = patched_forward
+        # Try Qwen2.5-VL first
+        try:
+            from transformers.models.qwen2_5_vl.modeling_qwen2_5_vl import Qwen2_5_VisionPatchEmbed
+            Qwen2_5_VisionPatchEmbed.forward = _make_patched_forward(Qwen2_5_VisionPatchEmbed.forward)
+        except Exception:
+            pass
+
+        # Try Qwen2-VL (2B/7B)
+        try:
+            from transformers.models.qwen2_vl.modeling_qwen2_vl import PatchEmbed as Qwen2VisionPatchEmbed
+            Qwen2VisionPatchEmbed.forward = _make_patched_forward(Qwen2VisionPatchEmbed.forward)
         except Exception:
             pass
 

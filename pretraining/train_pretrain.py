@@ -31,6 +31,90 @@ from utils.logging import setup_logger
 from utils.checkpoint import save_checkpoint, load_checkpoint
 
 
+def diagnose_nan_in_model(model, model_inputs, logger):
+    """
+    When loss is NaN, run a diagnostic forward pass with hooks
+    to locate which layer produces the first NaN/Inf.
+    """
+    logger.error("=" * 60)
+    logger.error("NAN/INF DIAGNOSTIC — Locating source of numerical instability")
+    logger.error("=" * 60)
+
+    # 1. Print input tensor statistics
+    logger.error("[Inputs]")
+    for k, v in model_inputs.items():
+        if isinstance(v, torch.Tensor):
+            nan_count = v.isnan().sum().item()
+            inf_count = v.isinf().sum().item()
+            if torch.is_floating_point(v) or torch.is_complex(v):
+                stats = (
+                    f"min={v.min().item():.4f}, max={v.max().item():.4f}, "
+                    f"mean={v.mean().item():.4f}, "
+                )
+            else:
+                stats = "dtype=integer/bool (skipped mean), "
+            logger.error(
+                f"  {k}: shape={list(v.shape)}, dtype={v.dtype}, device={v.device}, "
+                f"{stats}nan={nan_count}, inf={inf_count}"
+            )
+
+    # 2. Register forward hooks on all modules
+    first_nan_layer = [None]
+    hooks = []
+
+    def make_hook(name):
+        def hook(module, input, output):
+            if first_nan_layer[0] is not None:
+                return
+            # Check output
+            tensors_to_check = []
+            if isinstance(output, torch.Tensor):
+                tensors_to_check.append(("output", output))
+            elif isinstance(output, (tuple, list)):
+                for i, o in enumerate(output):
+                    if isinstance(o, torch.Tensor):
+                        tensors_to_check.append((f"output[{i}]", o))
+            elif isinstance(output, dict):
+                for k, v in output.items():
+                    if isinstance(v, torch.Tensor):
+                        tensors_to_check.append((f"output['{k}']", v))
+            for tensor_name, tensor in tensors_to_check:
+                if tensor.isnan().any() or tensor.isinf().any():
+                    first_nan_layer[0] = (name, module.__class__.__name__, tensor_name)
+                    nan_count = tensor.isnan().sum().item()
+                    inf_count = tensor.isinf().sum().item()
+                    logger.error(
+                        f"[FIRST NAN] Layer: {name} ({module.__class__.__name__}) | {tensor_name} | "
+                        f"shape={list(tensor.shape)}, nan={nan_count}, inf={inf_count}, "
+                        f"min={tensor.min().item():.4f}, max={tensor.max().item():.4f}"
+                    )
+        return hook
+
+    for name, module in model.named_modules():
+        if len(list(module.children())) == 0:  # leaf modules only
+            hooks.append(module.register_forward_hook(make_hook(name)))
+
+    # 3. Re-run forward with no_grad (diagnostic only)
+    with torch.no_grad():
+        try:
+            _ = model(**model_inputs)
+        except Exception as e:
+            logger.error(f"Diagnostic forward failed: {e}")
+
+    # 4. Cleanup hooks
+    for h in hooks:
+        h.remove()
+
+    if first_nan_layer[0] is None:
+        logger.error("[Result] No NaN/Inf found in any layer's output during diagnostic forward.")
+        logger.error("         NaN may originate from: loss computation, gradient, or backward pass.")
+    else:
+        logger.error(f"[Result] First NaN/Inf detected at: {first_nan_layer[0][0]} ({first_nan_layer[0][1]})")
+
+    logger.error("=" * 60)
+    raise RuntimeError(f"Training stopped for NaN diagnosis. See logs above. First NaN layer: {first_nan_layer[0]}")
+
+
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str, default="configs/pretrain.yaml")
@@ -106,12 +190,12 @@ def build_dataloader(cfg: dict, tokenizer):
     return loader
 
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum=1, log_every=50, wandb_run=None, max_grad_norm=0.5):
+def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum=1, log_every=50, wandb_run=None, max_grad_norm=1.0):
     model.train()
     total_loss = 0.0
     num_batches = 0
-    num_skipped = 0
-    nan_streak = 0
+    nan_streak = 0          # consecutive NaN losses
+    batch_has_nan = False   # whether current batch triggered NaN
 
     pbar = tqdm(dataloader, desc=f"Epoch {epoch}")
     for step, batch in enumerate(pbar):
@@ -120,18 +204,30 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logg
         outputs = model(**model_inputs)
         loss = outputs.loss
 
-        # Skip nan/inf loss to prevent gradient contamination
+        # ---- NaN loss handling: skip batch, but diagnose on first occurrence ----
         if not torch.isfinite(loss):
-            num_skipped += 1
             nan_streak += 1
-            logger.warning(f"Epoch {epoch} Step {step+1}: loss is {loss.item() if loss.numel() == 1 else 'non-scalar'} — skipping backward (nan_streak={nan_streak}, total_skipped={num_skipped})")
-            # If nan streak is too long, training is likely diverged — abort epoch
-            if nan_streak >= 20:
-                logger.error(f"Nan streak reached {nan_streak} steps. Training has diverged. Aborting epoch.")
-                raise RuntimeError(f"Training diverged: {nan_streak} consecutive nan losses.")
+            batch_has_nan = True
+            logger.error(
+                f"Epoch {epoch} Step {step+1}: loss is nan/inf (streak={nan_streak})"
+            )
+            if nan_streak == 1 or nan_streak % 10 == 0:
+                # Run diagnosis only occasionally to avoid flooding logs
+                try:
+                    diagnose_nan_in_model(model, model_inputs, logger)
+                except Exception as diag_err:
+                    logger.error(f"NaN diagnosis failed: {diag_err}")
+            if nan_streak >= 50:
+                raise RuntimeError(
+                    f"Training diverged: {nan_streak} consecutive NaN losses. Stopping."
+                )
+            # Skip backward/step for this batch
+            if (step + 1) % grad_accum == 0 or (step + 1) == len(dataloader):
+                optimizer.zero_grad()
             continue
         else:
-            nan_streak = 0  # reset on valid loss
+            nan_streak = 0
+            batch_has_nan = False
 
         loss = loss / grad_accum
         # Compute backward in fp32 to avoid bf16 numerical instability
@@ -140,30 +236,38 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logg
         if (step + 1) % grad_accum == 0 or (step + 1) == len(dataloader):
             # Check for nan gradients before stepping
             has_nan_grad = False
-            for p in model.parameters():
+            bad_param_name = None
+            for name, p in model.named_parameters():
                 if p.grad is not None and not torch.isfinite(p.grad).all():
                     has_nan_grad = True
+                    bad_param_name = name
                     break
 
             if has_nan_grad:
-                num_skipped += 1
-                logger.warning(f"Epoch {epoch} Step {step+1}: nan/inf gradient detected — skipping optimizer step")
+                logger.error(
+                    f"Epoch {epoch} Step {step+1}: NaN/Inf gradient in '{bad_param_name}' — "
+                    "skipping step and zeroing gradients"
+                )
                 optimizer.zero_grad()
             else:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                if grad_norm > max_grad_norm * 0.9:
+                    logger.warning(
+                        f"Epoch {epoch} Step {step+1}: grad_norm={grad_norm:.2f} is close to clip threshold"
+                    )
                 optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad()
 
         total_loss += loss.item() * grad_accum
         num_batches += 1
-        pbar.set_postfix({"loss": loss.item() * grad_accum, "lr": scheduler.get_last_lr()[0], "skipped": num_skipped})
+        pbar.set_postfix({"loss": loss.item() * grad_accum, "lr": scheduler.get_last_lr()[0]})
 
         # Log intermediate loss
         if (step + 1) % log_every == 0:
             current_loss = total_loss / max(num_batches, 1)
             lr = scheduler.get_last_lr()[0]
-            msg = f"Epoch {epoch} Step {step+1}/{len(dataloader)} | loss={loss.item() * grad_accum:.4f} | avg_loss={current_loss:.4f} | lr={lr:.2e} | skipped={num_skipped}"
+            msg = f"Epoch {epoch} Step {step+1}/{len(dataloader)} | loss={loss.item() * grad_accum:.4f} | avg_loss={current_loss:.4f} | lr={lr:.2e}"
             logger.info(msg)
             if wandb_run is not None:
                 wandb_run.log({
@@ -172,13 +276,12 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logg
                     "train/lr": lr,
                     "train/step": step + 1,
                     "train/epoch": epoch,
-                    "train/skipped": num_skipped,
                 })
 
     avg_loss = total_loss / max(num_batches, 1)
-    logger.info(f"Epoch {epoch} avg loss: {avg_loss:.4f} (skipped {num_skipped} batches)")
+    logger.info(f"Epoch {epoch} avg loss: {avg_loss:.4f}")
     if wandb_run is not None:
-        wandb_run.log({"train/epoch_avg_loss": avg_loss, "train/epoch": epoch, "train/epoch_skipped": num_skipped})
+        wandb_run.log({"train/epoch_avg_loss": avg_loss, "train/epoch": epoch})
     return avg_loss
 
 
