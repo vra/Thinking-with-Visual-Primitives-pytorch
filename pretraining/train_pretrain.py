@@ -16,7 +16,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
 from transformers import get_cosine_schedule_with_warmup
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, PeftModel
 from tqdm import tqdm
 
 # Add project root to path
@@ -36,6 +36,9 @@ def parse_args():
     parser.add_argument("--config", type=str, default="configs/pretrain.yaml")
     parser.add_argument("--output_dir", type=str, default="outputs/pretrain")
     parser.add_argument("--resume", type=str, default=None)
+    parser.add_argument("--use_wandb", action="store_true", help="Enable wandb logging")
+    parser.add_argument("--wandb_project", type=str, default="visual-primitives")
+    parser.add_argument("--wandb_run_name", type=str, default="pretrain")
     return parser.parse_args()
 
 
@@ -44,7 +47,7 @@ def load_config(config_path: str):
         return yaml.safe_load(f)
 
 
-def build_model(cfg: dict):
+def build_model(cfg: dict, skip_lora: bool = False):
     model = VisualPrimitiveVLM(
         model_name_or_path=cfg["model_name_or_path"],
         use_spatial_compression=cfg.get("use_spatial_compression", False),
@@ -55,7 +58,7 @@ def build_model(cfg: dict):
         load_in_8bit=cfg.get("load_in_8bit", False),
     )
 
-    if cfg.get("use_lora", False):
+    if cfg.get("use_lora", False) and not skip_lora:
         lora_cfg = LoraConfig(
             r=cfg.get("lora_r", 64),
             lora_alpha=cfg.get("lora_alpha", 128),
@@ -103,17 +106,13 @@ def build_dataloader(cfg: dict, tokenizer):
     return loader
 
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum=1):
+def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum=1, log_every=50, wandb_run=None):
     model.train()
     total_loss = 0.0
     num_batches = 0
 
     pbar = tqdm(dataloader, desc=f"Epoch {epoch}")
     for step, batch in enumerate(pbar):
-        input_ids = batch["input_ids"].to(device)
-        attention_mask = batch["attention_mask"].to(device)
-        labels = batch["labels"].to(device)
-
         # Move all tensor items to device and pass to model
         model_inputs = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
         outputs = model(**model_inputs)
@@ -130,8 +129,25 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logg
         num_batches += 1
         pbar.set_postfix({"loss": loss.item() * grad_accum, "lr": scheduler.get_last_lr()[0]})
 
+        # Log intermediate loss
+        if (step + 1) % log_every == 0:
+            current_loss = total_loss / num_batches
+            lr = scheduler.get_last_lr()[0]
+            msg = f"Epoch {epoch} Step {step+1}/{len(dataloader)} | loss={loss.item() * grad_accum:.4f} | avg_loss={current_loss:.4f} | lr={lr:.2e}"
+            logger.info(msg)
+            if wandb_run is not None:
+                wandb_run.log({
+                    "train/loss": loss.item() * grad_accum,
+                    "train/avg_loss": current_loss,
+                    "train/lr": lr,
+                    "train/step": step + 1,
+                    "train/epoch": epoch,
+                })
+
     avg_loss = total_loss / max(num_batches, 1)
     logger.info(f"Epoch {epoch} avg loss: {avg_loss:.4f}")
+    if wandb_run is not None:
+        wandb_run.log({"train/epoch_avg_loss": avg_loss, "train/epoch": epoch})
     return avg_loss
 
 
@@ -147,9 +163,25 @@ def main():
     device = torch.device(cfg.get("device", "cuda" if torch.cuda.is_available() else "cpu"))
     logger.info(f"Using device: {device}")
 
+    # Optional: wandb
+    wandb_run = None
+    if args.use_wandb:
+        try:
+            import wandb
+            wandb_run = wandb.init(
+                project=args.wandb_project,
+                name=args.wandb_run_name,
+                config=cfg,
+            )
+            logger.info("Wandb initialized.")
+        except Exception as e:
+            logger.warning(f"Wandb init failed: {e}")
+
     # Build model
     model = build_model(cfg)
-    model.to(device)
+    # 4-bit/8-bit models use device_map="auto", already on GPU. Skip .to() to avoid OOM.
+    if not (cfg.get("load_in_4bit", False) or cfg.get("load_in_8bit", False)):
+        model.to(device)
     tokenizer = model.tokenizer
 
     # Build dataloader
@@ -176,12 +208,18 @@ def main():
         resume_path = Path(args.resume)
         # Check if resume path is a PEFT adapter directory (adapter-only save)
         if resume_path.is_dir() and (resume_path / "adapter_config.json").exists():
+            import gc
             from peft import PeftModel
             # model.vlm is already wrapped by get_peft_model in build_model.
             # We need to replace it with a PeftModel loaded from the saved adapter.
-            # First, unwrap to get the base model.
+            # First, unwrap to get the base model and release the old adapter's GPU memory.
             base_model = model.vlm.model if isinstance(model.vlm, PeftModel) else model.vlm
-            model.vlm = PeftModel.from_pretrained(base_model, str(resume_path))
+            model.vlm = base_model  # drop the old PeftModel wrapper
+            del base_model
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            model.vlm = PeftModel.from_pretrained(model.vlm, str(resume_path), is_trainable=True)
             # Try to infer epoch from directory name (e.g., epoch_0 -> start at epoch 1)
             if resume_path.name.startswith("epoch_"):
                 start_epoch = int(resume_path.name.split("_")[-1]) + 1
@@ -190,9 +228,30 @@ def main():
             start_epoch, global_step = load_checkpoint(args.resume, model, optimizer, scheduler, device)
             start_epoch += 1
 
+    tokenizer = model.tokenizer
+
+    # Build dataloader
+    dataloader = build_dataloader(cfg, tokenizer)
+
+    # Optimizer & scheduler
+    grad_accum = cfg.get("gradient_accumulation_steps", 1)
+    total_steps = (len(dataloader) // grad_accum) * cfg["epochs"]
+    warmup_steps = int(total_steps * cfg.get("warmup_ratio", 0.03))
+
+    optimizer = AdamW(
+        [p for p in model.parameters() if p.requires_grad],
+        lr=cfg["learning_rate"],
+        betas=(0.9, 0.999),
+        weight_decay=cfg.get("weight_decay", 0.01),
+    )
+    scheduler = get_cosine_schedule_with_warmup(
+        optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps
+    )
+
+    log_every = cfg.get("log_every", 50)
     grad_accum = cfg.get("gradient_accumulation_steps", 1)
     for epoch in range(start_epoch, cfg["epochs"]):
-        avg_loss = train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum)
+        avg_loss = train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum, log_every, wandb_run)
         global_step += len(dataloader) // grad_accum
 
         if (epoch + 1) % cfg.get("save_every", 1) == 0:
@@ -204,6 +263,9 @@ def main():
     # Save final
     model.save_pretrained(str(output_dir / "final"))
     logger.info("Pretraining complete.")
+
+    if wandb_run is not None:
+        wandb_run.finish()
 
 
 if __name__ == "__main__":
