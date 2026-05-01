@@ -30,9 +30,10 @@ image_root: "data/coco/val"
 batch_size: 1
 gradient_accumulation_steps: 16
 epochs: 3
-learning_rate: 2.0e-4
+learning_rate: 5.0e-5
 weight_decay: 0.01
-warmup_ratio: 0.03
+warmup_ratio: 0.15
+max_grad_norm: 0.5
 max_length: 512
 image_size: 224
 num_workers: 0

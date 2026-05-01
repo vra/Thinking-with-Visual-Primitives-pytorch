@@ -106,34 +106,64 @@ def build_dataloader(cfg: dict, tokenizer):
     return loader
 
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum=1, log_every=50, wandb_run=None):
+def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum=1, log_every=50, wandb_run=None, max_grad_norm=0.5):
     model.train()
     total_loss = 0.0
     num_batches = 0
+    num_skipped = 0
+    nan_streak = 0
 
     pbar = tqdm(dataloader, desc=f"Epoch {epoch}")
     for step, batch in enumerate(pbar):
         # Move all tensor items to device and pass to model
         model_inputs = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
         outputs = model(**model_inputs)
-        loss = outputs.loss / grad_accum
-        loss.backward()
+        loss = outputs.loss
+
+        # Skip nan/inf loss to prevent gradient contamination
+        if not torch.isfinite(loss):
+            num_skipped += 1
+            nan_streak += 1
+            logger.warning(f"Epoch {epoch} Step {step+1}: loss is {loss.item() if loss.numel() == 1 else 'non-scalar'} — skipping backward (nan_streak={nan_streak}, total_skipped={num_skipped})")
+            # If nan streak is too long, training is likely diverged — abort epoch
+            if nan_streak >= 20:
+                logger.error(f"Nan streak reached {nan_streak} steps. Training has diverged. Aborting epoch.")
+                raise RuntimeError(f"Training diverged: {nan_streak} consecutive nan losses.")
+            continue
+        else:
+            nan_streak = 0  # reset on valid loss
+
+        loss = loss / grad_accum
+        # Compute backward in fp32 to avoid bf16 numerical instability
+        loss.float().backward()
 
         if (step + 1) % grad_accum == 0 or (step + 1) == len(dataloader):
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            optimizer.step()
-            scheduler.step()
-            optimizer.zero_grad()
+            # Check for nan gradients before stepping
+            has_nan_grad = False
+            for p in model.parameters():
+                if p.grad is not None and not torch.isfinite(p.grad).all():
+                    has_nan_grad = True
+                    break
+
+            if has_nan_grad:
+                num_skipped += 1
+                logger.warning(f"Epoch {epoch} Step {step+1}: nan/inf gradient detected — skipping optimizer step")
+                optimizer.zero_grad()
+            else:
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
 
         total_loss += loss.item() * grad_accum
         num_batches += 1
-        pbar.set_postfix({"loss": loss.item() * grad_accum, "lr": scheduler.get_last_lr()[0]})
+        pbar.set_postfix({"loss": loss.item() * grad_accum, "lr": scheduler.get_last_lr()[0], "skipped": num_skipped})
 
         # Log intermediate loss
         if (step + 1) % log_every == 0:
-            current_loss = total_loss / num_batches
+            current_loss = total_loss / max(num_batches, 1)
             lr = scheduler.get_last_lr()[0]
-            msg = f"Epoch {epoch} Step {step+1}/{len(dataloader)} | loss={loss.item() * grad_accum:.4f} | avg_loss={current_loss:.4f} | lr={lr:.2e}"
+            msg = f"Epoch {epoch} Step {step+1}/{len(dataloader)} | loss={loss.item() * grad_accum:.4f} | avg_loss={current_loss:.4f} | lr={lr:.2e} | skipped={num_skipped}"
             logger.info(msg)
             if wandb_run is not None:
                 wandb_run.log({
@@ -142,12 +172,13 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logg
                     "train/lr": lr,
                     "train/step": step + 1,
                     "train/epoch": epoch,
+                    "train/skipped": num_skipped,
                 })
 
     avg_loss = total_loss / max(num_batches, 1)
-    logger.info(f"Epoch {epoch} avg loss: {avg_loss:.4f}")
+    logger.info(f"Epoch {epoch} avg loss: {avg_loss:.4f} (skipped {num_skipped} batches)")
     if wandb_run is not None:
-        wandb_run.log({"train/epoch_avg_loss": avg_loss, "train/epoch": epoch})
+        wandb_run.log({"train/epoch_avg_loss": avg_loss, "train/epoch": epoch, "train/epoch_skipped": num_skipped})
     return avg_loss
 
 
@@ -250,8 +281,9 @@ def main():
 
     log_every = cfg.get("log_every", 50)
     grad_accum = cfg.get("gradient_accumulation_steps", 1)
+    max_grad_norm = cfg.get("max_grad_norm", 0.5)
     for epoch in range(start_epoch, cfg["epochs"]):
-        avg_loss = train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum, log_every, wandb_run)
+        avg_loss = train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum, log_every, wandb_run, max_grad_norm)
         global_step += len(dataloader) // grad_accum
 
         if (epoch + 1) % cfg.get("save_every", 1) == 0:
