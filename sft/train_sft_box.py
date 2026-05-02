@@ -6,6 +6,8 @@ Tasks: Counting, Spatial Reasoning, General VQA.
 """
 
 import os
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import sys
 import argparse
 from pathlib import Path

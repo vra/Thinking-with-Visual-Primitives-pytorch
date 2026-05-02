@@ -107,9 +107,15 @@ class ConversationCollator:
 
             img_path = sample.get("image_path")
             if img_path and Path(img_path).exists():
-                images.append(Image.open(img_path).convert("RGB"))
+                img = Image.open(img_path).convert("RGB")
+                # Resize to fixed size BEFORE processor to control visual token count.
+                # Qwen2-VL processor uses max_pixels=12845056 by default, which keeps
+                # original image size and can produce 1500+ patches for 640x480 images.
+                # Pre-resizing to 336x336 caps patches at 576, saving ~3GB VRAM.
+                img = img.resize((336, 336), Image.LANCZOS)
+                images.append(img)
             else:
-                images.append(Image.new("RGB", (448, 448), (128, 128, 128)))
+                images.append(Image.new("RGB", (336, 336), (128, 128, 128)))
 
         # Processor handles images and text together
         try:

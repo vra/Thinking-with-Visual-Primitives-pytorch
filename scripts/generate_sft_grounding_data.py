@@ -116,16 +116,19 @@ def main():
         img_to_labels[s["image"]].add(s["label_id"])
 
     # Build positive SFT samples
+    # Cap boxes at 8 per sample to keep sequence length manageable for 12G VRAM
+    MAX_BOXES_PER_SAMPLE = 8
     positive_samples = []
     for s in all_samples:
         if not s["boxes"]:
             continue
+        boxes = s["boxes"][:MAX_BOXES_PER_SAMPLE]
         positive_samples.append({
             "image": s["image"],
             "question": f"Locate the {s['category']} in the image.",
-            "thinking": build_positive_thinking(s["category"], s["boxes"]),
-            "answer": build_positive_answer(s["category"], s["boxes"]),
-            "boxes": s["boxes"],
+            "thinking": build_positive_thinking(s["category"], boxes),
+            "answer": build_positive_answer(s["category"], boxes),
+            "boxes": boxes,
             "points": [],
         })
 
