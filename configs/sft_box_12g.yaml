@@ -1,11 +1,12 @@
-# 专家 SFT (Box) - 适配 12G 显存 (4070 Ti)
+# 专家 SFT (Box) - 适配 12G 显存
+# 从预训练 final checkpoint 继续，加入负样本提升定位精度和拒绝能力
 
 model_name_or_path: "outputs/pretrain/final"
 freeze_vision_tower: true
 freeze_llm: false
 use_lora: true
-lora_r: 16
-lora_alpha: 32
+lora_r: 64
+lora_alpha: 128
 lora_target_modules:
   - "q_proj"
   - "k_proj"
@@ -17,27 +18,23 @@ lora_target_modules:
 lora_dropout: 0.05
 torch_dtype: "bfloat16"
 
-load_in_4bit: true
+load_in_4bit: false
 load_in_8bit: false
 
 datasets:
-  - path: "data/sft/counting/counting_data.jsonl"
+  - path: "data/sft/grounding/sft_grounding.jsonl"
     image_root: "data/coco/val"
-    task_type: "counting"
-    weight: 1.0
-  - path: "data/sft/spatial/spatial_data.jsonl"
-    image_root: "data/sft/spatial"
-    task_type: "spatial"
+    task_type: "grounding"
     weight: 1.0
 
 batch_size: 1
 gradient_accumulation_steps: 16
-epochs: 3
-learning_rate: 1.0e-4
+epochs: 5
+learning_rate: 5.0e-5
 weight_decay: 0.01
 warmup_ratio: 0.03
-max_length: 1024
-image_size: 336
+max_length: 2048
+image_size: 448
 num_workers: 0
 save_every: 1
 device: "cuda"

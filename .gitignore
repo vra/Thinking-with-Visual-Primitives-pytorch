@@ -68,3 +68,6 @@ Thumbs.db
 
 # Environment
 .env
+
+# Experiment records
+exp_records/

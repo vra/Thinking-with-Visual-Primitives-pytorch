@@ -21,12 +21,17 @@ class ConversationCollator:
 
         # Try to load processor for the model
         self.processor = None
-        try:
-            model_name = getattr(tokenizer, "name_or_path", None)
-            if model_name:
+        processor_candidates = []
+        if hasattr(tokenizer, "base_model_path"):
+            processor_candidates.append(tokenizer.base_model_path)
+        if getattr(tokenizer, "name_or_path", None):
+            processor_candidates.append(tokenizer.name_or_path)
+        for model_name in processor_candidates:
+            try:
                 self.processor = AutoProcessor.from_pretrained(model_name, trust_remote_code=True)
-        except Exception:
-            pass
+                break
+            except Exception:
+                continue
 
     def _build_conversation(self, sample: dict) -> List[dict]:
         """Build OpenAI-style conversation from sample."""

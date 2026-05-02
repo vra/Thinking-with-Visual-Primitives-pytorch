@@ -92,12 +92,14 @@ class VisualPrimitiveVLM(nn.Module):
             self.vlm.resize_token_embeddings(len(self.tokenizer))
             self.vlm.load_adapter(model_name_or_path)
             self.base_model_path = base_model_path
+            self.tokenizer.base_model_path = base_model_path
         else:
             load_kwargs["pretrained_model_name_or_path"] = model_name_or_path
             self.vlm = AutoModelForVision2Seq.from_pretrained(**load_kwargs)
             # Resize token embeddings for new special tokens
             self.vlm.resize_token_embeddings(len(self.tokenizer))
             self.base_model_path = model_name_or_path
+            self.tokenizer.base_model_path = model_name_or_path
 
         # Optionally freeze components
         if freeze_vision_tower:

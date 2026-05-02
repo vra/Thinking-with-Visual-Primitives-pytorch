@@ -26,7 +26,21 @@ get_backoff_seconds() {
     fi
 }
 
+# Check if training has already completed (final checkpoint exists)
+check_training_completed() {
+    if [ -f "outputs/pretrain/final/adapter_model.safetensors" ]; then
+        return 0
+    fi
+    return 1
+}
+
 check_training() {
+    # First: if training already completed, don't restart
+    if check_training_completed; then
+        echo "[$(date)] INFO: Training already completed (final checkpoint exists). Monitor exiting."
+        exit 0
+    fi
+
     # Check if python process is running
     PYTHON_PID=$(pgrep -f "train_pretrain.py.*pretrain_12g")
     if [ -z "$PYTHON_PID" ]; then
@@ -82,9 +96,10 @@ while true; do
             sed -i 's/Training diverged/Training diverged (resolved)/g' "$LOG_FILE"
         fi
         
-        # Determine resume path
-        if [ -d "outputs/pretrain/epoch_0" ]; then
-            RESUME_PATH="outputs/pretrain/epoch_0"
+        # Determine resume path: find the latest epoch checkpoint
+        LATEST_EPOCH=$(ls -d outputs/pretrain/epoch_* 2>/dev/null | sort -V | tail -1)
+        if [ -n "$LATEST_EPOCH" ]; then
+            RESUME_PATH="$LATEST_EPOCH"
         else
             RESUME_PATH=""
         fi
