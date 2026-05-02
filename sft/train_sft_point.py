@@ -51,7 +51,8 @@ def build_model(cfg: dict):
         load_in_4bit=cfg.get("load_in_4bit", False),
         load_in_8bit=cfg.get("load_in_8bit", False),
     )
-    if cfg.get("use_lora", False):
+    has_pretrained_lora = any("lora" in n for n, _ in model.vlm.named_parameters())
+    if cfg.get("use_lora", False) and not has_pretrained_lora:
         lora_cfg = LoraConfig(
             r=cfg.get("lora_r", 64),
             lora_alpha=cfg.get("lora_alpha", 128),
@@ -62,6 +63,13 @@ def build_model(cfg: dict):
         )
         model.vlm = get_peft_model(model.vlm, lora_cfg)
         model.vlm.print_trainable_parameters()
+    elif has_pretrained_lora:
+        trainable = sum(p.numel() for p in model.vlm.parameters() if p.requires_grad)
+        total = sum(p.numel() for p in model.vlm.parameters())
+        print(
+            f"Pretrained LoRA detected – skipping new LoRA init. "
+            f"Trainable params: {trainable:,} / {total:,} ({100*trainable/total:.4f}%)"
+        )
     return model
 
 

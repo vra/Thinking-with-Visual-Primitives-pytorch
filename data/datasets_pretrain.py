@@ -88,11 +88,16 @@ class COCODetectionDataset(Dataset):
         for ann in anns:
             x, y, w, h = ann["bbox"]
             from model.special_tokens import normalize_coordinate
+            # Clip to image bounds before normalizing
+            x1 = max(0.0, min(x, W))
+            y1 = max(0.0, min(y, H))
+            x2 = max(0.0, min(x + w, W))
+            y2 = max(0.0, min(y + h, H))
             boxes.append([
-                normalize_coordinate(x, W),
-                normalize_coordinate(y, H),
-                normalize_coordinate(x + w, W),
-                normalize_coordinate(y + h, H),
+                normalize_coordinate(x1, W),
+                normalize_coordinate(y1, H),
+                normalize_coordinate(x2, W),
+                normalize_coordinate(y2, H),
             ])
             labels.append(self.categories.get(ann["category_id"], ""))
 

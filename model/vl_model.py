@@ -90,7 +90,11 @@ class VisualPrimitiveVLM(nn.Module):
             # Load base model, resize embeddings, then load adapter
             self.vlm = AutoModelForVision2Seq.from_pretrained(base_model_path, **load_kwargs)
             self.vlm.resize_token_embeddings(len(self.tokenizer))
-            self.vlm.load_adapter(model_name_or_path)
+            # is_trainable=True ensures the loaded adapter weights are unfrozen
+            # so downstream SFT can continue updating them instead of adding a
+            # second LoRA that starts from zero and overwrites the pretrained
+            # knowledge.
+            self.vlm.load_adapter(model_name_or_path, is_trainable=True)
             self.base_model_path = base_model_path
             self.tokenizer.base_model_path = base_model_path
         else:

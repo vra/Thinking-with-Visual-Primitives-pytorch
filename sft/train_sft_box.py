@@ -53,7 +53,8 @@ def build_model(cfg: dict):
         load_in_4bit=cfg.get("load_in_4bit", False),
         load_in_8bit=cfg.get("load_in_8bit", False),
     )
-    if cfg.get("use_lora", False):
+    has_pretrained_lora = any("lora" in n for n, _ in model.vlm.named_parameters())
+    if cfg.get("use_lora", False) and not has_pretrained_lora:
         lora_cfg = LoraConfig(
             r=cfg.get("lora_r", 64),
             lora_alpha=cfg.get("lora_alpha", 128),
@@ -64,6 +65,17 @@ def build_model(cfg: dict):
         )
         model.vlm = get_peft_model(model.vlm, lora_cfg)
         model.vlm.print_trainable_parameters()
+    elif has_pretrained_lora:
+        # The model already carries a pretrained LoRA (loaded from a PEFT
+        # checkpoint).  With load_adapter(is_trainable=True) the existing
+        # adapter is already trainable, so we skip adding a second LoRA and
+        # fine-tune the pretrained one directly.
+        trainable = sum(p.numel() for p in model.vlm.parameters() if p.requires_grad)
+        total = sum(p.numel() for p in model.vlm.parameters())
+        print(
+            f"Pretrained LoRA detected – skipping new LoRA init. "
+            f"Trainable params: {trainable:,} / {total:,} ({100*trainable/total:.4f}%)"
+        )
     return model
 
 
@@ -107,7 +119,8 @@ def build_dataloader(cfg: dict, tokenizer):
     return loader
 
 
-def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum=1):
+def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logger, grad_accum=1,
+                       output_dir=None, save_every_n_steps=1000):
     model.train()
     total_loss = 0.0
     num_batches = 0
@@ -132,6 +145,13 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, device, epoch, logg
         total_loss += loss.item() * grad_accum
         num_batches += 1
         pbar.set_postfix({"loss": loss.item() * grad_accum, "lr": scheduler.get_last_lr()[0]})
+
+        # Save intermediate checkpoint every N steps to avoid losing progress on crash
+        if output_dir and save_every_n_steps > 0 and (step + 1) % save_every_n_steps == 0:
+            ckpt_dir = Path(output_dir) / f"epoch_{epoch}_step_{step + 1}"
+            ckpt_dir.mkdir(exist_ok=True, parents=True)
+            model.save_pretrained(str(ckpt_dir))
+            logger.info(f"Checkpoint saved to {ckpt_dir}")
 
     avg_loss = total_loss / max(num_batches, 1)
     logger.info(f"Epoch {epoch} avg loss: {avg_loss:.4f}")

@@ -137,11 +137,16 @@ def generate_pretrain_data(annotations: dict, output_path: Path):
         for ann in anns:
             cat_name = cats[ann["category_id"]]
             x, y, w, h = ann["bbox"]
+            # Clip to image bounds before normalizing to ensure [0,999] range
+            x1 = max(0.0, min(x, W))
+            y1 = max(0.0, min(y, H))
+            x2 = max(0.0, min(x + w, W))
+            y2 = max(0.0, min(y + h, H))
             box = (
-                normalize_coordinate(x, W),
-                normalize_coordinate(y, H),
-                normalize_coordinate(x + w, W),
-                normalize_coordinate(y + h, H),
+                normalize_coordinate(x1, W),
+                normalize_coordinate(y1, H),
+                normalize_coordinate(x2, W),
+                normalize_coordinate(y2, H),
             )
             by_cat[cat_name].append(box)
 
@@ -197,11 +202,15 @@ def generate_counting_data(annotations: dict, output_path: Path, num_samples: in
         for ann in anns:
             cat_name = cats[ann["category_id"]]
             x, y, w, h = ann["bbox"]
+            x1 = max(0.0, min(x, W))
+            y1 = max(0.0, min(y, H))
+            x2 = max(0.0, min(x + w, W))
+            y2 = max(0.0, min(y + h, H))
             box = (
-                normalize_coordinate(x, W),
-                normalize_coordinate(y, H),
-                normalize_coordinate(x + w, W),
-                normalize_coordinate(y + h, H),
+                normalize_coordinate(x1, W),
+                normalize_coordinate(y1, H),
+                normalize_coordinate(x2, W),
+                normalize_coordinate(y2, H),
             )
             by_cat[cat_name].append(box)
         for cat_name, boxes in by_cat.items():

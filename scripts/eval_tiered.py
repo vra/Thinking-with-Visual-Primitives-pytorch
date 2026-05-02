@@ -72,6 +72,8 @@ def run_inference(model, image_path: str, prompt: str, max_new_tokens: int = 128
 
     if processor is not None:
         image = Image.open(image_path).convert("RGB")
+        # Pre-resize to control visual token count (same as training collator)
+        image = image.resize((336, 336), Image.LANCZOS)
         inputs = processor(text=[text], images=[image], return_tensors="pt", padding=True)
     else:
         from data.transforms import ImageTransform
