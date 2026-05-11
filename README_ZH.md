@@ -339,7 +339,16 @@ RL 阶段使用组相对策略优化（GRPO），配合三类奖励模型：
 
 ## 引用
 
+如果本仓库对您有帮助，请引用我们的实现和原论文：
+
 ```bibtex
+@software{wang2026tvp_pytorch,
+  title={Thinking with Visual Primitives — PyTorch Implementation},
+  author={Wang, Weishan},
+  url={https://github.com/vra/Thinking-with-Visual-Primitives-pytorch},
+  year={2026}
+}
+
 @article{lu2026thinking,
   title={Thinking with Visual Primitives},
   author={Lu, Ruijie and Ma, Yiyang and Chen, Xiaokang and others},

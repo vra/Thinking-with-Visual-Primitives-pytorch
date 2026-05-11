@@ -339,7 +339,16 @@ The RL stage uses Group Relative Policy Optimization with three reward models:
 
 ## Citation
 
+If you find this repository useful, please cite our implementation and the original paper:
+
 ```bibtex
+@software{wang2026tvp_pytorch,
+  title={Thinking with Visual Primitives — PyTorch Implementation},
+  author={Wang, Weishan},
+  url={https://github.com/vra/Thinking-with-Visual-Primitives-pytorch},
+  year={2026}
+}
+
 @article{lu2026thinking,
   title={Thinking with Visual Primitives},
   author={Lu, Ruijie and Ma, Yiyang and Chen, Xiaokang and others},
