@@ -36,11 +36,11 @@ def regenerate_pretrain(coco_json_path, output_path):
         by_cat = defaultdict(list)
         for ann in anns:
             cat_id = ann["category_id"]
-            x, y, w, h = ann["bbox"]
-            x1 = max(0.0, min(x, W))
-            y1 = max(0.0, min(y, H))
-            x2 = max(0.0, min(x + w, W))
-            y2 = max(0.0, min(y + h, H))
+            x1, y1, x2, y2 = ann["bbox"]  # HuggingFace COCO: [x1,y1,x2,y2]
+            x1 = max(0.0, min(x1, W))
+            y1 = max(0.0, min(y1, H))
+            x2 = max(0.0, min(x2, W))
+            y2 = max(0.0, min(y2, H))
             box = (
                 normalize_coordinate(x1, W),
                 normalize_coordinate(y1, H),

@@ -101,7 +101,7 @@ def download_coco(output_dir: Path, split: str = "val", max_images: int = 5000):
                 "id": len(annotations["annotations"]) + 1,
                 "image_id": img_id,
                 "category_id": category_map[label],
-                "bbox": bbox,  # [x, y, w, h]
+                "bbox": bbox,  # [x1, y1, x2, y2]
             })
         count += 1
 
@@ -136,12 +136,11 @@ def generate_pretrain_data(annotations: dict, output_path: Path):
         by_cat = defaultdict(list)
         for ann in anns:
             cat_name = cats[ann["category_id"]]
-            x, y, w, h = ann["bbox"]
-            # Clip to image bounds before normalizing to ensure [0,999] range
-            x1 = max(0.0, min(x, W))
-            y1 = max(0.0, min(y, H))
-            x2 = max(0.0, min(x + w, W))
-            y2 = max(0.0, min(y + h, H))
+            x1, y1, x2, y2 = ann["bbox"]  # HuggingFace COCO: [x1,y1,x2,y2]
+            x1 = max(0.0, min(x1, W))
+            y1 = max(0.0, min(y1, H))
+            x2 = max(0.0, min(x2, W))
+            y2 = max(0.0, min(y2, H))
             box = (
                 normalize_coordinate(x1, W),
                 normalize_coordinate(y1, H),
@@ -186,6 +185,8 @@ def generate_counting_thinking(category: str, boxes: List[Tuple[int, int, int, i
 
 def generate_counting_data(annotations: dict, output_path: Path, num_samples: int):
     """从 COCO 生成 counting 数据。"""
+    from utils.coco_categories import COCO_CATS
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
     img_anns = defaultdict(list)
     for ann in annotations["annotations"]:
@@ -200,12 +201,16 @@ def generate_counting_data(annotations: dict, output_path: Path, num_samples: in
         anns = img_anns.get(img_id, [])
         by_cat = defaultdict(list)
         for ann in anns:
-            cat_name = cats[ann["category_id"]]
-            x, y, w, h = ann["bbox"]
-            x1 = max(0.0, min(x, W))
-            y1 = max(0.0, min(y, H))
-            x2 = max(0.0, min(x + w, W))
-            y2 = max(0.0, min(y + h, H))
+            raw_name = cats[ann["category_id"]]
+            try:
+                cat_name = COCO_CATS.get(int(raw_name), raw_name)
+            except (ValueError, TypeError):
+                cat_name = raw_name
+            x1, y1, x2, y2 = ann["bbox"]  # HuggingFace COCO: [x1,y1,x2,y2]
+            x1 = max(0.0, min(x1, W))
+            y1 = max(0.0, min(y1, H))
+            x2 = max(0.0, min(x2, W))
+            y2 = max(0.0, min(y2, H))
             box = (
                 normalize_coordinate(x1, W),
                 normalize_coordinate(y1, H),

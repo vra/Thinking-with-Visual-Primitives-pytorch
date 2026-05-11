@@ -71,9 +71,7 @@ def run_inference(model_path: str, image_path: str, prompt: str, device="cuda"):
         output_ids = model.vlm.generate(
             **inputs,
             max_new_tokens=256,
-            do_sample=True,
-            temperature=0.7,
-            top_p=0.9,
+            do_sample=False,
             pad_token_id=tokenizer.pad_token_id,
             eos_token_id=tokenizer.eos_token_id,
         )
