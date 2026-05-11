@@ -1,10 +1,10 @@
 """
 On-Policy Distillation (OPD).
 
-Distill expert models ETwG and ETwP into a single unified student model
-using reverse KL divergence on the student's own trajectories.
+Distill expert models ETwG and ETwP into a single unified student model.
+Uses forward KL divergence with temperature scaling for stable offline distillation.
 
-Loss: L_OPD = Σ w_i * D_KL(π_θ || π_Ei)
+Loss: L_OPD = Σ w_i * D_KL(π_Ei || π_θ) + ce_coeff * L_CE
 """
 
 import os
@@ -97,22 +97,33 @@ def build_dataloader(cfg, tokenizer):
     )
 
 
-def compute_kl_loss(student_logits, teacher_logits, attention_mask):
-    """
-    Reverse KL: D_KL(π_θ || π_E) = Σ π_θ(x) * (log π_θ(x) - log π_E(x)).
-    Per the paper: L_OPD = Σ w_i * D_KL(π_θ || π_Ei).
-    We compute per-token KL and average over valid tokens.
-    """
-    # student_logits, teacher_logits: (B, L, V)
-    student_log_probs = F.log_softmax(student_logits, dim=-1)
-    teacher_log_probs = F.log_softmax(teacher_logits, dim=-1)
-    student_probs = student_log_probs.exp()
+TASK_TO_TEACHER = {
+    "counting": 0,
+    "spatial": 0,
+    "grounding": 0,
+    "maze": 1,
+    "path": 1,
+}
 
-    # Reverse KL: D_KL(student || teacher) = Σ p_student * (log p_student - log p_teacher)
-    kl = (student_probs * (student_log_probs - teacher_log_probs)).sum(dim=-1)
-    mask = attention_mask.float()
-    kl = (kl * mask).sum() / mask.sum().clamp(min=1)
-    return kl
+
+def compute_distill_loss(student_logits, teacher_logits, attention_mask, temperature=2.0):
+    """
+    Forward KL: D_KL(teacher || student) with temperature scaling.
+    Gradient flows only through student_log_probs.
+    teacher_logits must already be detached.
+    """
+    s_logits = student_logits[:, :-1, :] / temperature
+    t_logits = teacher_logits[:, :-1, :] / temperature
+
+    teacher_probs = F.softmax(t_logits, dim=-1)
+    student_log_probs = F.log_softmax(s_logits, dim=-1)
+
+    per_token_loss = -(teacher_probs * student_log_probs).sum(dim=-1)
+
+    mask = attention_mask[:, 1:].float()
+    loss = (per_token_loss * mask).sum() / mask.sum().clamp(min=1)
+
+    return loss * (temperature ** 2)
 
 
 def main():
@@ -128,11 +139,14 @@ def main():
     student.to(device)
     teachers = build_teacher_models(cfg, device)
     teacher_weights = cfg.get("teacher_weights", [1.0 / len(teachers)] * len(teachers))
+    temperature = cfg.get("temperature", 2.0)
+    ce_coeff = cfg.get("ce_coeff", 0.3)
+    grad_accum = cfg.get("gradient_accumulation_steps", 16)
 
     tokenizer = student.tokenizer
     dataloader = build_dataloader(cfg, tokenizer)
 
-    total_steps = len(dataloader) * cfg["epochs"]
+    total_steps = (len(dataloader) // grad_accum) * cfg["epochs"]
     warmup_steps = int(total_steps * cfg.get("warmup_ratio", 0.03))
     optimizer = AdamW(
         [p for p in student.parameters() if p.requires_grad],
@@ -143,46 +157,93 @@ def main():
         optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps
     )
 
+    logger.info(f"Config: temperature={temperature}, ce_coeff={ce_coeff}, "
+                f"grad_accum={grad_accum}, lr={cfg['learning_rate']}, "
+                f"total_steps={total_steps}")
+
     for epoch in range(cfg["epochs"]):
         student.train()
         total_loss = 0.0
+        total_kl = 0.0
+        total_ce = 0.0
+        num_batches = 0
         pbar = tqdm(dataloader, desc=f"Epoch {epoch}")
-        for batch in pbar:
-            input_ids = batch["input_ids"].to(device)
-            attention_mask = batch["attention_mask"].to(device)
-            labels = batch["labels"].to(device)
-            # Move all tensor items to device
+        for step, batch in enumerate(pbar):
             model_inputs = {k: v.to(device) for k, v in batch.items() if isinstance(v, torch.Tensor)}
 
-            # Student forward
+            # Student forward (with gradients)
             student_outputs = student(**model_inputs)
             student_logits = student_outputs.logits
+            ce_loss = student_outputs.loss
 
-            # Teacher forwards (no grad) — remove labels for inference
+            # Determine which teacher to use based on task type
+            metadata_list = batch.get("metadata", [{}])
+            task_type = metadata_list[0].get("task_type", "") if metadata_list else ""
+            teacher_idx = TASK_TO_TEACHER.get(task_type, None)
+
             teacher_inputs = {k: v for k, v in model_inputs.items() if k != "labels"}
-            kl_losses = []
-            with torch.no_grad():
+            if teacher_idx is not None and teacher_idx < len(teachers):
+                # Route to the expert teacher for this task
+                with torch.no_grad():
+                    teacher_outputs = teachers[teacher_idx](**teacher_inputs)
+                    teacher_logits = teacher_outputs.logits.detach()
+                kl_loss = compute_distill_loss(
+                    student_logits, teacher_logits,
+                    model_inputs["attention_mask"], temperature
+                )
+                del teacher_outputs, teacher_logits
+            else:
+                # Unknown task: average all teachers
+                kl_losses = []
                 for teacher in teachers:
-                    teacher_outputs = teacher(**teacher_inputs)
-                    kl = compute_kl_loss(student_logits, teacher_outputs.logits, attention_mask)
+                    with torch.no_grad():
+                        teacher_outputs = teacher(**teacher_inputs)
+                        t_logits = teacher_outputs.logits.detach()
+                    kl = compute_distill_loss(
+                        student_logits, t_logits,
+                        model_inputs["attention_mask"], temperature
+                    )
                     kl_losses.append(kl)
+                    del teacher_outputs, t_logits
+                kl_loss = sum(w * kl for w, kl in zip(teacher_weights, kl_losses))
 
-            # Weighted KL loss
-            kl_loss = sum(w * kl for w, kl in zip(teacher_weights, kl_losses))
-            # Optionally add the standard CE loss to prevent forgetting
-            loss = cfg.get("ce_coeff", 0.1) * student_outputs.loss + kl_loss
-
-            optimizer.zero_grad()
+            loss = ce_coeff * ce_loss + kl_loss
+            loss = loss / grad_accum
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(student.parameters(), 1.0)
-            optimizer.step()
-            scheduler.step()
 
-            total_loss += loss.item()
-            pbar.set_postfix({"loss": loss.item(), "kl": kl_loss.item()})
+            if (step + 1) % grad_accum == 0 or (step + 1) == len(dataloader):
+                torch.nn.utils.clip_grad_norm_(student.parameters(), 1.0)
+                optimizer.step()
+                scheduler.step()
+                optimizer.zero_grad()
+                torch.cuda.empty_cache()
 
-        avg_loss = total_loss / len(dataloader)
-        logger.info(f"Epoch {epoch} avg loss: {avg_loss:.4f}")
+            batch_loss = loss.item() * grad_accum
+            total_loss += batch_loss
+            total_kl += kl_loss.item()
+            total_ce += ce_loss.item()
+            num_batches += 1
+            pbar.set_postfix({
+                "loss": f"{batch_loss:.3f}",
+                "kl": f"{kl_loss.item():.3f}",
+                "ce": f"{ce_loss.item():.3f}",
+            })
+
+            if (step + 1) % 50 == 0:
+                avg_l = total_loss / num_batches
+                avg_k = total_kl / num_batches
+                avg_c = total_ce / num_batches
+                logger.info(
+                    f"Epoch {epoch} Step {step+1}/{len(dataloader)} | "
+                    f"loss={batch_loss:.4f} | avg_loss={avg_l:.4f} | "
+                    f"avg_kl={avg_k:.4f} | avg_ce={avg_c:.4f} | "
+                    f"lr={scheduler.get_last_lr()[0]:.2e}"
+                )
+
+        avg_loss = total_loss / max(num_batches, 1)
+        avg_kl = total_kl / max(num_batches, 1)
+        avg_ce = total_ce / max(num_batches, 1)
+        logger.info(f"Epoch {epoch} avg loss: {avg_loss:.4f} (kl={avg_kl:.4f}, ce={avg_ce:.4f})")
 
         if (epoch + 1) % cfg.get("save_every", 1) == 0:
             save_dir = output_dir / f"epoch_{epoch}"

@@ -41,13 +41,12 @@ def format_box_token(boxes):
 
 def build_positive_thinking(category, boxes):
     """Build CoT thinking for positive sample."""
-    box_token = format_box_token(boxes)
     refs = "\n".join(
-        f"I see a <|ref|>{category}<|/ref|>{box_token}."
-        for _ in (boxes if boxes else [])
+        f"I see a <|ref|>{category}<|/ref|><|box|>[[{b[0]},{b[1]},{b[2]},{b[3]}]]<|/box|>."
+        for b in (boxes if boxes else [])
     )
     if not refs:
-        refs = f"I see a <|ref|>{category}<|/ref|>{box_token}."
+        refs = f"I see a <|ref|>{category}<|/ref|><|box|>[]<|/box|>."
 
     return (
         f"1. **Analyzing the request**\n"
@@ -100,8 +99,13 @@ def main():
         for line in f:
             item = json.loads(line.strip())
             img_rel = item.get("image", "")
-            label_id = int(item.get("label", 0))
-            category = COCO_CATS.get(label_id, f"object_{label_id}")
+            label_raw = item.get("label", 0)
+            try:
+                label_id = int(label_raw)
+                category = COCO_CATS.get(label_id, f"object_{label_id}")
+            except (ValueError, TypeError):
+                # label is already a string (category name)
+                category = str(label_raw)
             boxes = [tuple(b) for b in item.get("boxes", [])]
             all_samples.append({
                 "image": img_rel,

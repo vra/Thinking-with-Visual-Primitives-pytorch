@@ -364,24 +364,6 @@ def main():
 
     tokenizer = model.tokenizer
 
-    # Build dataloader
-    dataloader = build_dataloader(cfg, tokenizer)
-
-    # Optimizer & scheduler
-    grad_accum = cfg.get("gradient_accumulation_steps", 1)
-    total_steps = (len(dataloader) // grad_accum) * cfg["epochs"]
-    warmup_steps = int(total_steps * cfg.get("warmup_ratio", 0.03))
-
-    optimizer = AdamW(
-        [p for p in model.parameters() if p.requires_grad],
-        lr=cfg["learning_rate"],
-        betas=(0.9, 0.999),
-        weight_decay=cfg.get("weight_decay", 0.01),
-    )
-    scheduler = get_cosine_schedule_with_warmup(
-        optimizer, num_warmup_steps=warmup_steps, num_training_steps=total_steps
-    )
-
     log_every = cfg.get("log_every", 50)
     grad_accum = cfg.get("gradient_accumulation_steps", 1)
     max_grad_norm = cfg.get("max_grad_norm", 0.5)

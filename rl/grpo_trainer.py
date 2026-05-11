@@ -65,41 +65,45 @@ class GRPOTrainer:
         max_new_tokens: int = 512,
         **kwargs,
     ) -> List[str]:
-        """Generate group_size rollouts for the given prompts."""
+        """Generate group_size rollouts for the given prompts.
+        
+        Qwen2-VL has a bug in get_rope_index when use_cache=False during generate
+        (past_key_values handling causes input_ids/attention_mask shape mismatch).
+        We work around by temporarily enabling cache and eval mode.
+        """
         all_texts = []
-        batch_size = input_ids.shape[0]
-        # Repeat inputs group_size times
-        if pixel_values is not None:
-            pixel_values_repeated = pixel_values.repeat_interleave(self.group_size, dim=0)
-        else:
-            pixel_values_repeated = None
-        input_ids_repeated = input_ids.repeat_interleave(self.group_size, dim=0)
-        attention_mask_repeated = attention_mask.repeat_interleave(self.group_size, dim=0)
-
-        # Repeat any extra kwargs (e.g., image_grid_thw)
-        repeated_kwargs = {}
-        for k, v in kwargs.items():
-            if isinstance(v, torch.Tensor):
-                repeated_kwargs[k] = v.repeat_interleave(self.group_size, dim=0)
-            else:
-                repeated_kwargs[k] = v
-
-        outputs = self.model.generate(
-            pixel_values=pixel_values_repeated,
-            input_ids=input_ids_repeated,
-            attention_mask=attention_mask_repeated,
-            max_new_tokens=max_new_tokens,
-            do_sample=True,
-            temperature=0.9,
-            top_p=0.95,
-            pad_token_id=self.tokenizer.pad_token_id,
-            eos_token_id=self.tokenizer.eos_token_id,
-            **repeated_kwargs,
-        )
-        # Decode only the new tokens
-        new_tokens = outputs[:, input_ids_repeated.shape[1]:]
-        texts = self.tokenizer.batch_decode(new_tokens, skip_special_tokens=False)
-        return texts
+        was_training = self.model.training
+        original_use_cache = getattr(self.model.config, 'use_cache', None)
+        
+        self.model.eval()
+        if hasattr(self.model, 'config'):
+            self.model.config.use_cache = True
+        
+        try:
+            for _ in range(self.group_size):
+                outputs = self.model.generate(
+                    pixel_values=pixel_values,
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    max_new_tokens=max_new_tokens,
+                    do_sample=True,
+                    temperature=0.9,
+                    top_p=0.95,
+                    pad_token_id=self.tokenizer.pad_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                    **kwargs,
+                )
+                # Decode only the new tokens
+                new_tokens = outputs[:, input_ids.shape[1]:]
+                texts = self.tokenizer.batch_decode(new_tokens, skip_special_tokens=False)
+                all_texts.extend(texts)
+        finally:
+            if was_training:
+                self.model.train()
+            if original_use_cache is not None:
+                self.model.config.use_cache = original_use_cache
+        
+        return all_texts
 
     @torch.no_grad()
     def _compute_rewards(
@@ -198,33 +202,31 @@ class GRPOTrainer:
         full_ids = torch.cat([prompt_ids_repeated, rollout_ids], dim=1)
         full_mask = torch.cat([prompt_mask_repeated, rollout_mask], dim=1)
 
-        if pixel_values is not None:
-            pixel_values_repeated = pixel_values.repeat_interleave(self.group_size, dim=0)
-        else:
-            pixel_values_repeated = None
-
-        # Repeat extra kwargs for log prob computation
-        repeated_kwargs = {}
-        for k, v in kwargs.items():
-            if isinstance(v, torch.Tensor):
-                repeated_kwargs[k] = v.repeat_interleave(self.group_size, dim=0)
-            else:
-                repeated_kwargs[k] = v
-
         prompt_len = input_ids.shape[1]
 
         # 5. Compute log probs for current and reference policy
-        seq_log_probs = self._compute_log_probs(
-            self.model, pixel_values_repeated, full_ids, full_mask,
-            prompt_len=prompt_len, **repeated_kwargs
-        )
-        with torch.no_grad():
-            ref_seq_log_probs = self._compute_log_probs(
-                self.ref_model, pixel_values_repeated, full_ids, full_mask,
-                prompt_len=prompt_len, **repeated_kwargs
+        # Qwen2-VL: pixel_values/image_grid_thw are not batched per-sample,
+        # so compute log probs per rollout (batch_size=1) for compatibility.
+        seq_log_probs_list = []
+        ref_seq_log_probs_list = []
+        old_seq_log_probs_list = []
+        for i in range(full_ids.shape[0]):
+            lp = self._compute_log_probs(
+                self.model, pixel_values, full_ids[i:i+1], full_mask[i:i+1],
+                prompt_len=prompt_len, **kwargs
             )
-            # Store old log probs for importance ratio (before gradient update)
-            old_seq_log_probs = seq_log_probs.detach()
+            seq_log_probs_list.append(lp)
+            with torch.no_grad():
+                ref_lp = self._compute_log_probs(
+                    self.ref_model, pixel_values, full_ids[i:i+1], full_mask[i:i+1],
+                    prompt_len=prompt_len, **kwargs
+                )
+                ref_seq_log_probs_list.append(ref_lp)
+                old_seq_log_probs_list.append(lp.detach())
+
+        seq_log_probs = torch.cat(seq_log_probs_list)
+        ref_seq_log_probs = torch.cat(ref_seq_log_probs_list)
+        old_seq_log_probs = torch.cat(old_seq_log_probs_list)
 
         # 6. Compute KL penalty
         kl_div = seq_log_probs - ref_seq_log_probs  # approx KL

@@ -84,7 +84,7 @@ class VisualPrimitiveVLM(nn.Module):
         # Check if loading a PEFT adapter directory
         adapter_config_path = Path(model_name_or_path) / "adapter_config.json"
         if adapter_config_path.exists():
-            from peft import PeftConfig
+            from peft import PeftConfig, PeftModel
             peft_config = PeftConfig.from_pretrained(model_name_or_path)
             base_model_path = peft_config.base_model_name_or_path
             # Load base model, resize embeddings, then load adapter
@@ -94,7 +94,7 @@ class VisualPrimitiveVLM(nn.Module):
             # so downstream SFT can continue updating them instead of adding a
             # second LoRA that starts from zero and overwrites the pretrained
             # knowledge.
-            self.vlm.load_adapter(model_name_or_path, is_trainable=True)
+            self.vlm = PeftModel.from_pretrained(self.vlm, model_name_or_path, is_trainable=True)
             self.base_model_path = base_model_path
             self.tokenizer.base_model_path = base_model_path
         else:

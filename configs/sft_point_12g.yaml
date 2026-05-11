@@ -1,6 +1,6 @@
 # 专家 SFT (Point) - 适配 12G 显存 (4070 Ti)
 
-model_name_or_path: "outputs/pretrain/final"
+model_name_or_path: "outputs/sft_box/final"
 freeze_vision_tower: true
 freeze_llm: false
 use_lora: true
@@ -17,7 +17,7 @@ lora_target_modules:
 lora_dropout: 0.05
 torch_dtype: "bfloat16"
 
-load_in_4bit: true
+load_in_4bit: false
 load_in_8bit: false
 
 datasets:

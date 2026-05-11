@@ -1,10 +1,12 @@
 # OPD 蒸馏 - 适配 12G 显存 (4070 Ti)
-# 需要同时加载 student + 2 teachers，12G必须4-bit
+# 将 SFT box 专家 + SFT point 专家蒸馏为统一模型
+# 按任务路由 teacher: counting/spatial→box, maze/path→point
+# 使用 forward KL + 温度缩放，student 从 pretrain 初始化
 
-student_model: "outputs/rft/final"
+student_model: "outputs/pretrain/final"
 teacher_models:
-  - "outputs/rl_box/final"
-  - "outputs/rl_point/final"
+  - "outputs/sft_box/final"
+  - "outputs/sft_point/final"
 teacher_weights:
   - 0.5
   - 0.5
@@ -36,9 +38,10 @@ datasets:
 
 batch_size: 1
 gradient_accumulation_steps: 16
-epochs: 2
-learning_rate: 5.0e-7
-ce_coeff: 0.1
+epochs: 3
+learning_rate: 5.0e-6
+temperature: 1.5
+ce_coeff: 0.5
 weight_decay: 0.01
 warmup_ratio: 0.03
 max_length: 1024

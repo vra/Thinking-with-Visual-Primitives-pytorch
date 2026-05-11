@@ -293,9 +293,8 @@ def generate_spatial_question(objects: List[dict], img_path: Path) -> dict:
     if len(objects) < 2:
         return None
 
-    # 随机选一个问题类型
-    q_type = random.choice(["exists", "attribute", "relation"])
-    q_type = "attribute"  # 简化
+    # 简化: 只使用 attribute 问题类型
+    q_type = "attribute"
 
     # 选一个目标物体
     target = random.choice(objects)
@@ -316,7 +315,7 @@ def generate_spatial_question(objects: List[dict], img_path: Path) -> dict:
         s = obj["shape"]
         m = obj["material"]
         b = obj["bbox"]
-        lines.append(f"I see a < |ref|>{c} {m} {s}<|/ref|><|box|>[[{b[0]},{b[1]},{b[2]},{b[3]}]]<|/box|>.")
+        lines.append(f"I see a <|ref|>{c} {m} {s}<|/ref|><|box|>[[{b[0]},{b[1]},{b[2]},{b[3]}]]<|/box|>.")
     lines.append("3. **Conclusion**")
     lines.append(f"Since there is a {target_color} {target_mat} {target_shape}, the answer is Yes.")
     thinking = "\n".join(lines)

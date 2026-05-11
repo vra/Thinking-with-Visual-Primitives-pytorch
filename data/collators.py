@@ -72,8 +72,11 @@ class ConversationCollator:
         if answer:
             assistant_text += answer
         if not assistant_text and boxes:
-            from model.special_tokens import format_box_token
-            assistant_text = format_box_token(boxes)
+            from model.special_tokens import format_box_token, REF_START, REF_END
+            if label:
+                assistant_text = f"{REF_START}{label}{REF_END}{format_box_token(boxes)}"
+            else:
+                assistant_text = format_box_token(boxes)
         if not assistant_text and points:
             from model.special_tokens import format_point_token
             assistant_text = format_point_token(points)

@@ -423,18 +423,25 @@ def build_reward_models(task_type: str = "mixed", judge_model=None) -> List[Call
         maze_rm = MazeRewardModel()
         path_rm = PathTracingRewardModel()
 
-        def mixed_acc(text, meta):
-            subtask = meta.get("task_type", "spatial")
-            if subtask == "counting":
-                return counting_rm(text, meta)
-            elif subtask == "spatial":
-                return spatial_rm(text, meta)
-            elif subtask == "maze":
-                return maze_rm(text, meta)
-            elif subtask == "path":
-                return path_rm(text, meta)
-            return 0.0
+        class MixedAccRM:
+            def __init__(self):
+                self.counting_rm = CountingRewardModel()
+                self.spatial_rm = SpatialRewardModel()
+                self.maze_rm = MazeRewardModel()
+                self.path_rm = PathTracingRewardModel()
 
-        acc_rm = type("MixedAccRM", (), {"__call__": mixed_acc})()
+            def __call__(self, text, meta):
+                subtask = meta.get("task_type", "spatial")
+                if subtask == "counting":
+                    return self.counting_rm(text, meta)
+                elif subtask == "spatial":
+                    return self.spatial_rm(text, meta)
+                elif subtask == "maze":
+                    return self.maze_rm(text, meta)
+                elif subtask == "path":
+                    return self.path_rm(text, meta)
+                return 0.0
+
+        acc_rm = MixedAccRM()
 
     return [format_rm, quality_rm, acc_rm]

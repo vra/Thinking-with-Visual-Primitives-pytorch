@@ -44,22 +44,30 @@ def parse_args():
     return parser.parse_args()
 
 
+def _get_generate_kwargs(batch, device):
+    """Extract kwargs for model.generate from batch, including VL-specific tensors."""
+    kwargs = {
+        "input_ids": batch["input_ids"].to(device),
+        "attention_mask": batch["attention_mask"].to(device),
+    }
+    pixel_values = batch.get("pixel_values")
+    if pixel_values is not None:
+        kwargs["pixel_values"] = pixel_values.to(device)
+    for key in ("image_grid_thw", "image_rotary_emb", "pixel_values_videos", "video_grid_thw"):
+        if key in batch:
+            kwargs[key] = batch[key].to(device)
+    return kwargs
+
+
 def evaluate_counting(model, dataloader, device) -> Dict:
     em_count = 0
     ra_count = 0
     total = 0
     for batch in tqdm(dataloader, desc="Eval counting"):
-        pixel_values = batch.get("pixel_values")
-        if pixel_values is not None:
-            pixel_values = pixel_values.to(device)
-        input_ids = batch["input_ids"].to(device)
-        attention_mask = batch["attention_mask"].to(device)
-
+        kwargs = _get_generate_kwargs(batch, device)
         texts = model.generate(
-            pixel_values=pixel_values,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
             max_new_tokens=256,
+            **kwargs,
         )
         metadata_list = batch.get("metadata", [{}] * len(texts))
         for text, meta in zip(texts, metadata_list):
@@ -81,17 +89,10 @@ def evaluate_spatial(model, dataloader, device) -> Dict:
     correct = 0
     total = 0
     for batch in tqdm(dataloader, desc="Eval spatial"):
-        pixel_values = batch.get("pixel_values")
-        if pixel_values is not None:
-            pixel_values = pixel_values.to(device)
-        input_ids = batch["input_ids"].to(device)
-        attention_mask = batch["attention_mask"].to(device)
-
+        kwargs = _get_generate_kwargs(batch, device)
         texts = model.generate(
-            pixel_values=pixel_values,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
             max_new_tokens=256,
+            **kwargs,
         )
         metadata_list = batch.get("metadata", [{}] * len(texts))
         for text, meta in zip(texts, metadata_list):
@@ -108,17 +109,10 @@ def evaluate_maze(model, dataloader, device) -> Dict:
     path_valid = 0
     total = 0
     for batch in tqdm(dataloader, desc="Eval maze"):
-        pixel_values = batch.get("pixel_values")
-        if pixel_values is not None:
-            pixel_values = pixel_values.to(device)
-        input_ids = batch["input_ids"].to(device)
-        attention_mask = batch["attention_mask"].to(device)
-
+        kwargs = _get_generate_kwargs(batch, device)
         texts = model.generate(
-            pixel_values=pixel_values,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
             max_new_tokens=512,
+            **kwargs,
         )
         metadata_list = batch.get("metadata", [{}] * len(texts))
         for text, meta in zip(texts, metadata_list):
@@ -142,17 +136,10 @@ def evaluate_path(model, dataloader, device) -> Dict:
     traj_scores = []
     total = 0
     for batch in tqdm(dataloader, desc="Eval path"):
-        pixel_values = batch.get("pixel_values")
-        if pixel_values is not None:
-            pixel_values = pixel_values.to(device)
-        input_ids = batch["input_ids"].to(device)
-        attention_mask = batch["attention_mask"].to(device)
-
+        kwargs = _get_generate_kwargs(batch, device)
         texts = model.generate(
-            pixel_values=pixel_values,
-            input_ids=input_ids,
-            attention_mask=attention_mask,
             max_new_tokens=512,
+            **kwargs,
         )
         metadata_list = batch.get("metadata", [{}] * len(texts))
         for text, meta in zip(texts, metadata_list):

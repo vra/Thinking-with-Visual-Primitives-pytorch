@@ -174,8 +174,16 @@ def main():
 
     start_epoch = 0
     if args.resume:
-        start_epoch, _ = load_checkpoint(args.resume, model, optimizer, scheduler, device)
-        start_epoch += 1
+        resume_path = Path(args.resume)
+        if resume_path.is_dir() and (resume_path / "adapter_config.json").exists():
+            # PEFT adapter directory - model already loaded with this adapter
+            # via model_name_or_path in build_model. Just infer epoch from dirname.
+            if resume_path.name.startswith("epoch_"):
+                start_epoch = int(resume_path.name.split("_")[-1]) + 1
+            logger.info(f"Resumed PEFT adapter from {resume_path}, starting at epoch {start_epoch}")
+        else:
+            start_epoch, _ = load_checkpoint(args.resume, model, optimizer, scheduler, device)
+            start_epoch += 1
 
     grad_accum = cfg.get("gradient_accumulation_steps", 1)
     for epoch in range(start_epoch, cfg["epochs"]):
