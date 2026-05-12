@@ -106,11 +106,10 @@ TASK_TO_TEACHER = {
 }
 
 
-def compute_distill_loss(student_logits, teacher_logits, attention_mask, temperature=2.0):
+def compute_distill_loss(student_logits, teacher_logits, labels, temperature=2.0):
     """
     Forward KL: D_KL(teacher || student) with temperature scaling.
-    Gradient flows only through student_log_probs.
-    teacher_logits must already be detached.
+    Only computed on assistant tokens (where labels != -100).
     """
     s_logits = student_logits[:, :-1, :] / temperature
     t_logits = teacher_logits[:, :-1, :] / temperature
@@ -120,7 +119,8 @@ def compute_distill_loss(student_logits, teacher_logits, attention_mask, tempera
 
     per_token_loss = -(teacher_probs * student_log_probs).sum(dim=-1)
 
-    mask = attention_mask[:, 1:].float()
+    labels_shifted = labels[:, 1:]
+    mask = (labels_shifted != -100).float()
     loss = (per_token_loss * mask).sum() / mask.sum().clamp(min=1)
 
     return loss * (temperature ** 2)
@@ -189,7 +189,7 @@ def main():
                     teacher_logits = teacher_outputs.logits.detach()
                 kl_loss = compute_distill_loss(
                     student_logits, teacher_logits,
-                    model_inputs["attention_mask"], temperature
+                    model_inputs["labels"], temperature
                 )
                 del teacher_outputs, teacher_logits
             else:
@@ -201,7 +201,7 @@ def main():
                         t_logits = teacher_outputs.logits.detach()
                     kl = compute_distill_loss(
                         student_logits, t_logits,
-                        model_inputs["attention_mask"], temperature
+                        model_inputs["labels"], temperature
                     )
                     kl_losses.append(kl)
                     del teacher_outputs, t_logits

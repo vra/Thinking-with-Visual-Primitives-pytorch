@@ -3,7 +3,7 @@
 # 按任务路由 teacher: counting/spatial→box, maze/path→point
 # 使用 forward KL + 温度缩放，student 从 pretrain 初始化
 
-student_model: "outputs/pretrain/final"
+student_model: "outputs/sft_box/final"
 teacher_models:
   - "outputs/sft_box/final"
   - "outputs/sft_point/final"
@@ -19,6 +19,10 @@ load_in_4bit: true
 load_in_8bit: false
 
 datasets:
+  - path: "data/sft/grounding/sft_grounding.jsonl"
+    image_root: "data/coco/val"
+    task_type: "grounding"
+    weight: 1.0
   - path: "data/sft/counting/counting_data.jsonl"
     image_root: "data/coco/val"
     task_type: "counting"
@@ -41,7 +45,7 @@ gradient_accumulation_steps: 16
 epochs: 3
 learning_rate: 5.0e-6
 temperature: 1.5
-ce_coeff: 0.5
+ce_coeff: 2.0
 weight_decay: 0.01
 warmup_ratio: 0.03
 max_length: 1024

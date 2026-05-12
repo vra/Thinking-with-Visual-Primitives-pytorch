@@ -185,7 +185,7 @@ def generate_counting_thinking(category: str, boxes: List[Tuple[int, int, int, i
 
 def generate_counting_data(annotations: dict, output_path: Path, num_samples: int):
     """从 COCO 生成 counting 数据。"""
-    from utils.coco_categories import COCO_CATS
+    from utils.coco_categories import COCO_CATS, get_category_name
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     img_anns = defaultdict(list)
@@ -202,10 +202,7 @@ def generate_counting_data(annotations: dict, output_path: Path, num_samples: in
         by_cat = defaultdict(list)
         for ann in anns:
             raw_name = cats[ann["category_id"]]
-            try:
-                cat_name = COCO_CATS.get(int(raw_name), raw_name)
-            except (ValueError, TypeError):
-                cat_name = raw_name
+            cat_name = get_category_name(raw_name)
             x1, y1, x2, y2 = ann["bbox"]  # HuggingFace COCO: [x1,y1,x2,y2]
             x1 = max(0.0, min(x1, W))
             y1 = max(0.0, min(y1, H))

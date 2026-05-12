@@ -10,7 +10,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from model.special_tokens import normalize_coordinate
-from utils.coco_categories import COCO_CATS
+from utils.coco_categories import COCO_CATS, get_category_name
 
 random.seed(42)
 
@@ -78,7 +78,7 @@ def regenerate_sft(pretrain_records, output_path, neg_ratio=0.30, max_samples=10
     for rec in pretrain_records:
         # label is numeric category id (string)
         label_id = int(rec["label"])
-        category = COCO_CATS.get(label_id, f"object_{label_id}")
+        category = get_category_name(label_id)
 
         boxes = [tuple(b) for b in rec["boxes"]]
         all_samples.append({

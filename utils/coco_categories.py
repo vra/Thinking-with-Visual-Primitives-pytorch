@@ -21,6 +21,15 @@ COCO_CATS = {
 }
 
 
+_SORTED_IDS = sorted(COCO_CATS.keys())
+HF_COCO_CATS = {i: COCO_CATS[_SORTED_IDS[i]] for i in range(len(_SORTED_IDS))}
+
+
 def get_category_name(label_id, default_prefix="object"):
-    """Get COCO category name from label id."""
-    return COCO_CATS.get(int(label_id), f"{default_prefix}_{label_id}")
+    """Get COCO category name from label id (standard or HuggingFace index)."""
+    label_id = int(label_id)
+    if label_id in COCO_CATS:
+        return COCO_CATS[label_id]
+    if label_id in HF_COCO_CATS:
+        return HF_COCO_CATS[label_id]
+    return f"{default_prefix}_{label_id}"
