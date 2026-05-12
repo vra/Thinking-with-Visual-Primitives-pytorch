@@ -62,6 +62,10 @@ data/__pycache__/
 *.jpg
 *.png
 
+# Allow test images for README examples
+!test-images/
+!test-images/**
+
 # OS
 .DS_Store
 Thumbs.db

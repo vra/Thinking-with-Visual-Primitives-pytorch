@@ -34,6 +34,38 @@ The cat is located at the specified coordinates.
 | SFT Point Expert | [TBD](#) | Pointing specialist (maze, path tracing) |
 | OPD Unified | [TBD](#) | Final distilled model (both capabilities) |
 
+## Example Results
+
+We compare the model outputs across three training stages on the same images. The progression shows how each stage improves visual grounding quality.
+
+### Grounding: "Locate the person"
+
+| Stage | Output | Visualization |
+|-------|--------|:-------------:|
+| **Pretrain** | `<\|ref\|>Person<\|/ref\|><\|box\|>[[480,201,999,999]]<\|/box\|>` (oversized box) | <img src="test-images/results/pretrain_img_001.jpg" width="300"> |
+| **SFT Box** | `1. **Analyzing the request** ... 2. **Object grounding** I see a <\|ref\|>person<\|/ref\|><\|box\|>[[447,457,523,577]]<\|/box\|>. 3. **Conclusion** ...` | <img src="test-images/results/sft_box_img_001.jpg" width="300"> |
+| **OPD** | `1. **Analyzing the request** ... 2. **Object grounding** I see a <\|ref\|>person<\|/ref\|><\|box\|>[[447,457,523,577]]<\|/box\|>. 3. **Conclusion** ...` | <img src="test-images/results/opd_img_001.jpg" width="300"> |
+
+### Grounding: "Locate the sports ball"
+
+| Stage | Output | Visualization |
+|-------|--------|:-------------:|
+| **Pretrain** | `<\|ref\|>[[278,267,729,759]]<\|/ref\|>` (no label, oversized) | <img src="test-images/results/pretrain_img_003.jpg" width="300"> |
+| **SFT Box** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,261,477,537]]<\|/box\|> ...` | <img src="test-images/results/sft_box_img_003.jpg" width="300"> |
+| **OPD** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,262,477,527]]<\|/box\|> ...` | <img src="test-images/results/opd_img_003.jpg" width="300"> |
+
+### Counting: "How many people / sports balls?"
+
+| Image | Pretrain | SFT Box | OPD |
+|-------|----------|---------|-----|
+| <img src="test-images/img_000.jpg" width="150"> | `<\|ref\|>2<\|/ref\|><\|box\|>[[331,140,999,999],...]<\|/box\|>` | "This image contains 2 people." | "How many people are in this image? ..." |
+| <img src="test-images/img_002.jpg" width="150"> | "There are four sports balls in the image." | "There are four sports balls in this image." | "There are four sports balls in this image." |
+
+**Key observations:**
+- **Pretrain** learns the visual primitive token format but produces oversized boxes and no structured thinking
+- **SFT Box** adds structured thinking (Analyzing → Grounding → Conclusion) and produces tight, accurate boxes
+- **OPD** preserves SFT Box quality while also supporting point-based tasks (maze, path tracing)
+
 ## Quick Start
 
 ### Installation
