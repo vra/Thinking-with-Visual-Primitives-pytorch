@@ -43,28 +43,31 @@ The cat is located at the specified coordinates.
 | 阶段 | 输出 | 可视化 |
 |------|------|:------:|
 | **预训练** | `<\|ref\|>Person<\|/ref\|><\|box\|>[[480,201,999,999]]<\|/box\|>`（框过大） | <img src="test-images/results/pretrain_img_001.jpg" width="300"> |
-| **SFT Box** | `1. **Analyzing the request** ... 2. **Object grounding** I see a <\|ref\|>person<\|/ref\|><\|box\|>[[447,457,523,577]]<\|/box\|>. 3. **Conclusion** ...` | <img src="test-images/results/sft_box_img_001.jpg" width="300"> |
-| **OPD** | `1. **Analyzing the request** ... 2. **Object grounding** I see a <\|ref\|>person<\|/ref\|><\|box\|>[[447,457,523,577]]<\|/box\|>. 3. **Conclusion** ...` | <img src="test-images/results/opd_img_001.jpg" width="300"> |
+| **SFT Box** | `1. Analyzing... 2. Object grounding: 未检测到人物. 3. Conclusion: 图中无人.`（学会拒绝） | <img src="test-images/results/sft_box_img_001.jpg" width="300"> |
+| **OPD** | `1. Analyzing... 2. Object grounding: 未检测到人物. 3. Conclusion: 图中无人.`（保持拒绝能力） | <img src="test-images/results/opd_img_001.jpg" width="300"> |
 
 ### 定位任务："Locate the sports ball"
 
 | 阶段 | 输出 | 可视化 |
 |------|------|:------:|
-| **预训练** | `<\|ref\|>[[278,267,729,759]]<\|/ref\|>`（无标签，框过大） | <img src="test-images/results/pretrain_img_003.jpg" width="300"> |
-| **SFT Box** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,261,477,537]]<\|/box\|> ...` | <img src="test-images/results/sft_box_img_003.jpg" width="300"> |
-| **OPD** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,262,477,527]]<\|/box\|> ...` | <img src="test-images/results/opd_img_003.jpg" width="300"> |
+| **预训练** | `<\|ref\|>[[277,271,729,789]]<\|/ref\|>`（无标签，框过大） | <img src="test-images/results/pretrain_img_003.jpg" width="300"> |
+| **SFT Box** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,244,479,500]]<\|/box\|> ...` | <img src="test-images/results/sft_box_img_003.jpg" width="300"> |
+| **OPD** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[281,246,477,500]]<\|/box\|> ...` | <img src="test-images/results/opd_img_003.jpg" width="300"> |
 
 ### 计数任务："How many people / sports balls?"
 
 | 图片 | 预训练 | SFT Box | OPD |
 |------|--------|---------|-----|
-| <img src="test-images/img_000.jpg" width="150"> | `<\|ref\|>2<\|/ref\|><\|box\|>[[331,140,999,999],...]<\|/box\|>` | "This image contains 2 people." | "How many people are in this image? ..." |
-| <img src="test-images/img_002.jpg" width="150"> | "There are four sports balls in the image." | "There are four sports balls in this image." | "There are four sports balls in this image." |
+| <img src="test-images/img_000.jpg" width="150"> | "2"（无框） | "2 instance(s) of people" + 2 框 | "2 instance(s) of people" + 2 框 |
+| | | <img src="test-images/results/sft_box_img_000.jpg" width="200"> | <img src="test-images/results/opd_img_000.jpg" width="200"> |
+| <img src="test-images/img_002.jpg" width="150"> | "4"（无框） | "4 instance(s) of sports ball" + 4 框 | "4 instance(s) of sports ball" + 4 框 |
+| | | <img src="test-images/results/sft_box_img_002.jpg" width="200"> | <img src="test-images/results/opd_img_002.jpg" width="200"> |
 
 **关键发现：**
 - **预训练**阶段学会了视觉原语 token 格式，但框过大，缺少结构化思维
-- **SFT Box** 引入结构化思维（分析意图 → 目标定位 → 结论），生成紧凑准确的边界框
-- **OPD** 保持了 SFT Box 的定位质量，同时还支持基于点的任务（迷宫、路径追踪）
+- **SFT Box** 引入统一结构化思维（分析意图 → 目标定位 → 结论），grounding 和 counting 共享同一模板，生成紧凑准确的边界框，并学会拒绝不存在的目标
+- **OPD** 高质量蒸馏（KL=0.86），完美保持 SFT Box 的定位质量，同时支持基于点的任务（迷宫、路径追踪）
+- **统一模板**：counting 和 grounding 使用相同的 "1. Analyzing → 2. Object grounding → 3. Conclusion" 格式，消除了蒸馏时的格式冲突
 
 ## 快速开始
 

@@ -1,5 +1,6 @@
 # 专家 SFT (Box) - 适配 12G 显存
-# 从预训练 final checkpoint 继续，加入负样本提升定位精度和拒绝能力
+# 从预训练 final checkpoint 继续，统一训练 grounding + counting + spatial
+# 使用统一 thinking 模板: "1. Analyzing → 2. Object grounding → 3. Conclusion"
 
 model_name_or_path: "outputs/pretrain/final"
 freeze_vision_tower: true
@@ -23,10 +24,19 @@ load_in_8bit: false
 
 datasets:
   - path: "data/sft/grounding/sft_grounding.jsonl"
-    image_root: "data/coco/val"
+    image_root: "data/coco/train/coco/train"
     task_type: "grounding"
     weight: 1.0
+  - path: "data/sft/counting/counting_data.jsonl"
+    image_root: "data/coco/train/coco/train"
+    task_type: "counting"
+    weight: 1.0
+  - path: "data/sft/spatial/spatial_data.jsonl"
+    image_root: "data/sft/spatial"
+    task_type: "spatial"
+    weight: 1.0
 
+total_samples: 41000
 batch_size: 1
 gradient_accumulation_steps: 16
 epochs: 5

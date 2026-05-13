@@ -169,17 +169,17 @@ def generate_pretrain_data(annotations: dict, output_path: Path):
 # ---------------------------------------------------------------------------
 
 def generate_counting_thinking(category: str, boxes: List[Tuple[int, int, int, int]], count: int) -> str:
-    """程序生成 Counting 的 thinking 内容。"""
+    """程序生成 Counting 的 thinking 内容（统一模板：与 grounding 格式一致）。"""
     lines = []
-    lines.append(f"1. **What am I looking for**")
-    lines.append(f"The question asks me to count the {category} in this image. I need to scan the entire scene and locate all instances.")
-    lines.append(f"2. **Scanning the image**")
+    lines.append("1. **Analyzing the request**")
+    lines.append(f"The user asks me to count the {category} in this image.")
+    lines.append("2. **Object grounding**")
     box_strs = []
-    for i, (x1, y1, x2, y2) in enumerate(boxes):
+    for x1, y1, x2, y2 in boxes:
         box_strs.append(f"[{x1},{y1},{x2},{y2}]")
-    lines.append(f"I found the following {category}: <|ref|>{category}<|/ref|><|box|>[{','.join(box_strs)}]<|/box|>")
-    lines.append(f"3. **Final count**")
-    lines.append(f"Counting all instances, the total number is {count}.")
+    lines.append(f"I see {count} instance(s) of <|ref|>{category}<|/ref|><|box|>[{','.join(box_strs)}]<|/box|>.")
+    lines.append("3. **Conclusion**")
+    lines.append(f"There are {count} {category} in this image.")
     return "\n".join(lines)
 
 

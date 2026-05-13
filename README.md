@@ -43,28 +43,31 @@ We compare the model outputs across three training stages on the same images. Th
 | Stage | Output | Visualization |
 |-------|--------|:-------------:|
 | **Pretrain** | `<\|ref\|>Person<\|/ref\|><\|box\|>[[480,201,999,999]]<\|/box\|>` (oversized box) | <img src="test-images/results/pretrain_img_001.jpg" width="300"> |
-| **SFT Box** | `1. **Analyzing the request** ... 2. **Object grounding** I see a <\|ref\|>person<\|/ref\|><\|box\|>[[447,457,523,577]]<\|/box\|>. 3. **Conclusion** ...` | <img src="test-images/results/sft_box_img_001.jpg" width="300"> |
-| **OPD** | `1. **Analyzing the request** ... 2. **Object grounding** I see a <\|ref\|>person<\|/ref\|><\|box\|>[[447,457,523,577]]<\|/box\|>. 3. **Conclusion** ...` | <img src="test-images/results/opd_img_001.jpg" width="300"> |
+| **SFT Box** | `1. Analyzing... 2. Object grounding: no person present. 3. Conclusion: There is no person.` (learned to reject) | <img src="test-images/results/sft_box_img_001.jpg" width="300"> |
+| **OPD** | `1. Analyzing... 2. Object grounding: no person present. 3. Conclusion: There is no person.` (preserves rejection) | <img src="test-images/results/opd_img_001.jpg" width="300"> |
 
 ### Grounding: "Locate the sports ball"
 
 | Stage | Output | Visualization |
 |-------|--------|:-------------:|
-| **Pretrain** | `<\|ref\|>[[278,267,729,759]]<\|/ref\|>` (no label, oversized) | <img src="test-images/results/pretrain_img_003.jpg" width="300"> |
-| **SFT Box** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,261,477,537]]<\|/box\|> ...` | <img src="test-images/results/sft_box_img_003.jpg" width="300"> |
-| **OPD** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,262,477,527]]<\|/box\|> ...` | <img src="test-images/results/opd_img_003.jpg" width="300"> |
+| **Pretrain** | `<\|ref\|>[[277,271,729,789]]<\|/ref\|>` (no label, oversized) | <img src="test-images/results/pretrain_img_003.jpg" width="300"> |
+| **SFT Box** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,244,479,500]]<\|/box\|> ...` | <img src="test-images/results/sft_box_img_003.jpg" width="300"> |
+| **OPD** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[281,246,477,500]]<\|/box\|> ...` | <img src="test-images/results/opd_img_003.jpg" width="300"> |
 
 ### Counting: "How many people / sports balls?"
 
 | Image | Pretrain | SFT Box | OPD |
 |-------|----------|---------|-----|
-| <img src="test-images/img_000.jpg" width="150"> | `<\|ref\|>2<\|/ref\|><\|box\|>[[331,140,999,999],...]<\|/box\|>` | "This image contains 2 people." | "How many people are in this image? ..." |
-| <img src="test-images/img_002.jpg" width="150"> | "There are four sports balls in the image." | "There are four sports balls in this image." | "There are four sports balls in this image." |
+| <img src="test-images/img_000.jpg" width="150"> | "2" (no boxes) | "2 instance(s) of people" + 2 boxes | "2 instance(s) of people" + 2 boxes |
+| | | <img src="test-images/results/sft_box_img_000.jpg" width="200"> | <img src="test-images/results/opd_img_000.jpg" width="200"> |
+| <img src="test-images/img_002.jpg" width="150"> | "4" (no boxes) | "4 instance(s) of sports ball" + 4 boxes | "4 instance(s) of sports ball" + 4 boxes |
+| | | <img src="test-images/results/sft_box_img_002.jpg" width="200"> | <img src="test-images/results/opd_img_002.jpg" width="200"> |
 
 **Key observations:**
 - **Pretrain** learns the visual primitive token format but produces oversized boxes and no structured thinking
-- **SFT Box** adds structured thinking (Analyzing → Grounding → Conclusion) and produces tight, accurate boxes
-- **OPD** preserves SFT Box quality while also supporting point-based tasks (maze, path tracing)
+- **SFT Box** adds unified structured thinking (Analyzing → Grounding → Conclusion) for both grounding and counting, with tight boxes and negative sample rejection
+- **OPD** preserves SFT Box quality (KL=0.86) while also supporting point-based tasks (maze, path tracing)
+- **Unified template**: counting and grounding now share the same "1. Analyzing → 2. Object grounding → 3. Conclusion" format, eliminating format conflicts during distillation
 
 ## Quick Start
 

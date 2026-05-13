@@ -20,11 +20,11 @@ load_in_8bit: false
 
 datasets:
   - path: "data/sft/grounding/sft_grounding.jsonl"
-    image_root: "data/coco/val"
+    image_root: "data/coco/train/coco/train"
     task_type: "grounding"
     weight: 1.0
   - path: "data/sft/counting/counting_data.jsonl"
-    image_root: "data/coco/val"
+    image_root: "data/coco/train/coco/train"
     task_type: "counting"
     weight: 1.0
   - path: "data/sft/spatial/spatial_data.jsonl"
