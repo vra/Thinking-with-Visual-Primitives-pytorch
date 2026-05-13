@@ -36,38 +36,193 @@ The cat is located at the specified coordinates.
 
 ## 示例结果
 
-我们在相同图片上对比三个训练阶段的模型输出，展示各阶段对视觉定位质量的提升。
+我们在相同图片上对比三个训练阶段的完整模型输出。
 
-### 定位任务："Locate the person"
+### 定位任务："Locate the person in the image."
 
-| 阶段 | 输出 | 可视化 |
-|------|------|:------:|
-| **预训练** | `<\|ref\|>Person<\|/ref\|><\|box\|>[[480,201,999,999]]<\|/box\|>`（框过大） | <img src="test-images/results/pretrain_img_001.jpg" width="300"> |
-| **SFT Box** | `1. Analyzing... 2. Object grounding: 未检测到人物. 3. Conclusion: 图中无人.`（学会拒绝） | <img src="test-images/results/sft_box_img_001.jpg" width="300"> |
-| **OPD** | `1. Analyzing... 2. Object grounding: 未检测到人物. 3. Conclusion: 图中无人.`（保持拒绝能力） | <img src="test-images/results/opd_img_001.jpg" width="300"> |
+<table>
+<tr><th>阶段</th><th>完整输出</th><th>可视化</th></tr>
+<tr>
+<td><b>预训练</b></td>
+<td>
 
-### 定位任务："Locate the sports ball"
+```
+<|ref|>Person<|/ref|><|box|>[[480,201,999,999]]<|/box|>
+```
+无结构化思维，框过大（覆盖大部分图片）。
+</td>
+<td><img src="test-images/results/pretrain_img_001.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
 
-| 阶段 | 输出 | 可视化 |
-|------|------|:------:|
-| **预训练** | `<\|ref\|>[[277,271,729,789]]<\|/ref\|>`（无标签，框过大） | <img src="test-images/results/pretrain_img_003.jpg" width="300"> |
-| **SFT Box** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,244,479,500]]<\|/box\|> ...` | <img src="test-images/results/sft_box_img_003.jpg" width="300"> |
-| **OPD** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[281,246,477,500]]<\|/box\|> ...` | <img src="test-images/results/opd_img_003.jpg" width="300"> |
+```
+1. **Analyzing the request**
+The user asks me to locate the person in this image.
+2. **Object grounding**
+I see a <|ref|>person<|/ref|><|box|>[[511,208,738,963]]<|/box|>.
+3. **Conclusion**
+The person is located at the specified coordinates.
+The person is located at [[511,208,738,963]].
+```
+结构化思维，准确定位人物剪影。
+</td>
+<td><img src="test-images/results/sft_box_img_001.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
 
-### 计数任务："How many people / sports balls?"
+```
+1. **Analyzing the request**
+The user asks me to locate the person in this image.
+2. **Object grounding**
+I see a <|ref|>person<|/ref|><|box|>[[531,901,568,958]]<|/box|>.
+3. **Conclusion**
+The person is located at the specified coordinates.
+The person is located at [[531,901,568,958]].
+```
+保持结构化思维，框偏小（仅检测到脚部区域）。
+</td>
+<td><img src="test-images/results/opd_img_001.jpg" width="250"></td>
+</tr>
+</table>
 
-| 图片 | 预训练 | SFT Box | OPD |
-|------|--------|---------|-----|
-| <img src="test-images/img_000.jpg" width="150"> | "2"（无框） | "2 instance(s) of people" + 2 框 | "2 instance(s) of people" + 2 框 |
-| | | <img src="test-images/results/sft_box_img_000.jpg" width="200"> | <img src="test-images/results/opd_img_000.jpg" width="200"> |
-| <img src="test-images/img_002.jpg" width="150"> | "4"（无框） | "4 instance(s) of sports ball" + 4 框 | "4 instance(s) of sports ball" + 4 框 |
-| | | <img src="test-images/results/sft_box_img_002.jpg" width="200"> | <img src="test-images/results/opd_img_002.jpg" width="200"> |
+### 定位任务："Locate the sports ball in the image."
+
+<table>
+<tr><th>阶段</th><th>完整输出</th><th>可视化</th></tr>
+<tr>
+<td><b>预训练</b></td>
+<td>
+
+```
+<|ref|>[[278,267,729,759]]<|/ref|>
+```
+无标签，tag 使用错误，框过大。
+</td>
+<td><img src="test-images/results/pretrain_img_003.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
+
+```
+1. **Analyzing the request**
+The user asks me to locate the sports ball in this image.
+2. **Object grounding**
+I see a <|ref|>sports ball<|/ref|><|box|>[[277,244,479,510]]<|/box|>.
+3. **Conclusion**
+The sports ball is located at the specified coordinates.
+The sports ball is located at [[277,244,479,510]].
+```
+正确标签，紧凑框，完整结构化思维。
+</td>
+<td><img src="test-images/results/sft_box_img_003.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
+
+```
+1. **Analyzing the request**
+The user asks me to locate the sports ball in this image.
+2. **Object grounding**
+I see a <|ref|>sports ball<|/ref|><|box|>[[277,240,479,521]]<|/box|>.
+3. **Conclusion**
+The sports ball is located at the specified coordinates.
+The sports ball is located at [[277,240,479,521]].
+```
+与 SFT Box 质量接近（KL=0.88）。
+</td>
+<td><img src="test-images/results/opd_img_003.jpg" width="250"></td>
+</tr>
+</table>
+
+### 计数任务："How many people are in the image?"
+
+<table>
+<tr><th>阶段</th><th>完整输出</th><th>可视化</th></tr>
+<tr>
+<td><b>预训练</b></td>
+<td>
+
+```
+There are two people in the image.
+```
+正确计数但无边界框。
+</td>
+<td><img src="test-images/results/pretrain_img_000.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
+
+```
+<|ref|>2<|/ref|><|box|>[[338,121,630,923],[634,154,888,945]]<|/box|>
+```
+输出计数并为每个人标注边界框。
+</td>
+<td><img src="test-images/results/sft_box_img_000.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
+
+```
+I don't know how many people are in the image. It can be 2 or 3.
+```
+不确定回答——计数能力在蒸馏中有退化。
+</td>
+<td><img src="test-images/results/opd_img_000.jpg" width="250"></td>
+</tr>
+</table>
+
+### 计数任务："How many sports balls are in the image?"
+
+<table>
+<tr><th>阶段</th><th>完整输出</th><th>可视化</th></tr>
+<tr>
+<td><b>预训练</b></td>
+<td>
+
+```
+There are four sports balls in the image.
+```
+正确计数，无边界框。
+</td>
+<td><img src="test-images/results/pretrain_img_002.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
+
+```
+There are four sports balls in the image.
+```
+正确计数（本例未生成框）。
+</td>
+<td><img src="test-images/results/sft_box_img_002.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
+
+```
+There are four sports balls in the image.
+```
+保持正确计数。
+</td>
+<td><img src="test-images/results/opd_img_002.jpg" width="250"></td>
+</tr>
+</table>
 
 **关键发现：**
 - **预训练**阶段学会了视觉原语 token 格式，但框过大，缺少结构化思维
-- **SFT Box** 引入统一结构化思维（分析意图 → 目标定位 → 结论），grounding 和 counting 共享同一模板，生成紧凑准确的边界框，并学会拒绝不存在的目标
-- **OPD** 高质量蒸馏（KL=0.86），完美保持 SFT Box 的定位质量，同时支持基于点的任务（迷宫、路径追踪）
-- **统一模板**：counting 和 grounding 使用相同的 "1. Analyzing → 2. Object grounding → 3. Conclusion" 格式，消除了蒸馏时的格式冲突
+- **SFT Box** 引入结构化思维（分析意图 → 目标定位 → 结论），生成准确的边界框，能处理剪影等困难样本
+- **OPD** 保持定位质量（KL=0.88），同时支持基于点的任务（迷宫、路径追踪），但计数带框能力仍需改进
+- **neg_ratio 调优**：将负样本比例从 0.30 降至 0.15，解决了过度拒绝问题（之前人物剪影被误判为"不存在"）
 
 ## 快速开始
 

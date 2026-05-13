@@ -36,38 +36,193 @@ The cat is located at the specified coordinates.
 
 ## Example Results
 
-We compare the model outputs across three training stages on the same images. The progression shows how each stage improves visual grounding quality.
+We compare the model outputs across three training stages on the same images, showing complete model responses.
 
-### Grounding: "Locate the person"
+### Grounding: "Locate the person in the image."
 
-| Stage | Output | Visualization |
-|-------|--------|:-------------:|
-| **Pretrain** | `<\|ref\|>Person<\|/ref\|><\|box\|>[[480,201,999,999]]<\|/box\|>` (oversized box) | <img src="test-images/results/pretrain_img_001.jpg" width="300"> |
-| **SFT Box** | `1. Analyzing... 2. Object grounding: no person present. 3. Conclusion: There is no person.` (learned to reject) | <img src="test-images/results/sft_box_img_001.jpg" width="300"> |
-| **OPD** | `1. Analyzing... 2. Object grounding: no person present. 3. Conclusion: There is no person.` (preserves rejection) | <img src="test-images/results/opd_img_001.jpg" width="300"> |
+<table>
+<tr><th>Stage</th><th>Complete Output</th><th>Visualization</th></tr>
+<tr>
+<td><b>Pretrain</b></td>
+<td>
 
-### Grounding: "Locate the sports ball"
+```
+<|ref|>Person<|/ref|><|box|>[[480,201,999,999]]<|/box|>
+```
+No structured thinking. Box is oversized (covers most of the image).
+</td>
+<td><img src="test-images/results/pretrain_img_001.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
 
-| Stage | Output | Visualization |
-|-------|--------|:-------------:|
-| **Pretrain** | `<\|ref\|>[[277,271,729,789]]<\|/ref\|>` (no label, oversized) | <img src="test-images/results/pretrain_img_003.jpg" width="300"> |
-| **SFT Box** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[277,244,479,500]]<\|/box\|> ...` | <img src="test-images/results/sft_box_img_003.jpg" width="300"> |
-| **OPD** | `... I see a <\|ref\|>sports ball<\|/ref\|><\|box\|>[[281,246,477,500]]<\|/box\|> ...` | <img src="test-images/results/opd_img_003.jpg" width="300"> |
+```
+1. **Analyzing the request**
+The user asks me to locate the person in this image.
+2. **Object grounding**
+I see a <|ref|>person<|/ref|><|box|>[[511,208,738,963]]<|/box|>.
+3. **Conclusion**
+The person is located at the specified coordinates.
+The person is located at [[511,208,738,963]].
+```
+Structured thinking with accurate box on the silhouette.
+</td>
+<td><img src="test-images/results/sft_box_img_001.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
 
-### Counting: "How many people / sports balls?"
+```
+1. **Analyzing the request**
+The user asks me to locate the person in this image.
+2. **Object grounding**
+I see a <|ref|>person<|/ref|><|box|>[[531,901,568,958]]<|/box|>.
+3. **Conclusion**
+The person is located at the specified coordinates.
+The person is located at [[531,901,568,958]].
+```
+Preserves structured thinking. Box is smaller (detects feet area).
+</td>
+<td><img src="test-images/results/opd_img_001.jpg" width="250"></td>
+</tr>
+</table>
 
-| Image | Pretrain | SFT Box | OPD |
-|-------|----------|---------|-----|
-| <img src="test-images/img_000.jpg" width="150"> | "2" (no boxes) | "2 instance(s) of people" + 2 boxes | "2 instance(s) of people" + 2 boxes |
-| | | <img src="test-images/results/sft_box_img_000.jpg" width="200"> | <img src="test-images/results/opd_img_000.jpg" width="200"> |
-| <img src="test-images/img_002.jpg" width="150"> | "4" (no boxes) | "4 instance(s) of sports ball" + 4 boxes | "4 instance(s) of sports ball" + 4 boxes |
-| | | <img src="test-images/results/sft_box_img_002.jpg" width="200"> | <img src="test-images/results/opd_img_002.jpg" width="200"> |
+### Grounding: "Locate the sports ball in the image."
+
+<table>
+<tr><th>Stage</th><th>Complete Output</th><th>Visualization</th></tr>
+<tr>
+<td><b>Pretrain</b></td>
+<td>
+
+```
+<|ref|>[[278,267,729,759]]<|/ref|>
+```
+No label, wrong tag usage, oversized box.
+</td>
+<td><img src="test-images/results/pretrain_img_003.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
+
+```
+1. **Analyzing the request**
+The user asks me to locate the sports ball in this image.
+2. **Object grounding**
+I see a <|ref|>sports ball<|/ref|><|box|>[[277,244,479,510]]<|/box|>.
+3. **Conclusion**
+The sports ball is located at the specified coordinates.
+The sports ball is located at [[277,244,479,510]].
+```
+Correct label, tight box, full structured thinking.
+</td>
+<td><img src="test-images/results/sft_box_img_003.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
+
+```
+1. **Analyzing the request**
+The user asks me to locate the sports ball in this image.
+2. **Object grounding**
+I see a <|ref|>sports ball<|/ref|><|box|>[[277,240,479,521]]<|/box|>.
+3. **Conclusion**
+The sports ball is located at the specified coordinates.
+The sports ball is located at [[277,240,479,521]].
+```
+Nearly identical quality to SFT Box (KL=0.88).
+</td>
+<td><img src="test-images/results/opd_img_003.jpg" width="250"></td>
+</tr>
+</table>
+
+### Counting: "How many people are in the image?"
+
+<table>
+<tr><th>Stage</th><th>Complete Output</th><th>Visualization</th></tr>
+<tr>
+<td><b>Pretrain</b></td>
+<td>
+
+```
+There are two people in the image.
+```
+Correct count but no boxes or structured thinking.
+</td>
+<td><img src="test-images/results/pretrain_img_000.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
+
+```
+<|ref|>2<|/ref|><|box|>[[338,121,630,923],[634,154,888,945]]<|/box|>
+```
+Outputs count with bounding boxes for each person.
+</td>
+<td><img src="test-images/results/sft_box_img_000.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
+
+```
+I don't know how many people are in the image. It can be 2 or 3.
+```
+Uncertain response — counting quality degraded during distillation.
+</td>
+<td><img src="test-images/results/opd_img_000.jpg" width="250"></td>
+</tr>
+</table>
+
+### Counting: "How many sports balls are in the image?"
+
+<table>
+<tr><th>Stage</th><th>Complete Output</th><th>Visualization</th></tr>
+<tr>
+<td><b>Pretrain</b></td>
+<td>
+
+```
+There are four sports balls in the image.
+```
+Correct count, no boxes.
+</td>
+<td><img src="test-images/results/pretrain_img_002.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
+
+```
+There are four sports balls in the image.
+```
+Correct count, plain text (no boxes generated for this example).
+</td>
+<td><img src="test-images/results/sft_box_img_002.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
+
+```
+There are four sports balls in the image.
+```
+Preserves correct count.
+</td>
+<td><img src="test-images/results/opd_img_002.jpg" width="250"></td>
+</tr>
+</table>
 
 **Key observations:**
 - **Pretrain** learns the visual primitive token format but produces oversized boxes and no structured thinking
-- **SFT Box** adds unified structured thinking (Analyzing → Grounding → Conclusion) for both grounding and counting, with tight boxes and negative sample rejection
-- **OPD** preserves SFT Box quality (KL=0.86) while also supporting point-based tasks (maze, path tracing)
-- **Unified template**: counting and grounding now share the same "1. Analyzing → 2. Object grounding → 3. Conclusion" format, eliminating format conflicts during distillation
+- **SFT Box** adds structured thinking (Analyzing → Grounding → Conclusion) with accurate bounding boxes, and handles difficult cases like silhouettes
+- **OPD** preserves grounding quality (KL=0.88) while supporting point-based tasks (maze, path tracing), but counting with boxes still needs improvement
+- **neg_ratio tuning**: reducing negative sample ratio from 0.30 to 0.15 fixed the over-rejection problem (silhouette person was previously rejected as "not present")
 
 ## Quick Start
 
