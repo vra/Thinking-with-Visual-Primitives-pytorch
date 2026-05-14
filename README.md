@@ -3,7 +3,7 @@
 <p align="center">
     <a href="https://huggingface.co/yunfengwang"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow" alt="Hugging Face"></a>
     <a href="https://huggingface.co/datasets/yunfengwang/TVP-Training-Data"><img src="https://img.shields.io/badge/%F0%9F%93%A6%20Dataset-HF-orange" alt="Dataset"></a>
-    <a href="https://arxiv.org/abs/2506.00000"><img src="https://img.shields.io/badge/%F0%9F%93%91%20Paper-arXiv-b31b1b" alt="Paper"></a>
+    <a href="https://github.com/mitkox/Thinking-with-Visual-Primitives"><img src="https://img.shields.io/badge/%F0%9F%93%91%20Original-Repo-b31b1b" alt="Original"></a>
     <a href="README_ZH.md"><img src="https://img.shields.io/badge/%F0%9F%87%A8%F0%9F%87%B3%20%E4%B8%AD%E6%96%87-README-blue" alt="中文文档"></a>
 </p>
 
@@ -15,7 +15,7 @@
     <a href="https://huggingface.co/datasets/yunfengwang/TVP-Training-Data">Dataset</a>
 </p>
 
-> Unofficial PyTorch reproduction of [*Thinking with Visual Primitives*](https://arxiv.org/abs/2506.00000).
+> Unofficial PyTorch reproduction of [*Thinking with Visual Primitives*](https://github.com/mitkox/Thinking-with-Visual-Primitives).
 
 > **Note**: Due to compute constraints, all training stages use **LoRA** fine-tuning instead of full-parameter training. This is a **feasibility verification** of the pipeline — results demonstrate the approach works but have room for improvement with more compute (full fine-tuning, larger datasets, bigger models).
 
@@ -587,23 +587,18 @@ The RL stage uses Group Relative Policy Optimization with three reward models:
 
 ## Citation
 
-If you find this repository useful, please cite our implementation and the original paper:
+If you find this repository useful, please cite our implementation and the original project:
 
 ```bibtex
 @software{wang2026tvp_pytorch,
   title={Thinking with Visual Primitives — PyTorch Implementation},
-  author={Wang, Weishan},
+  author={Wang, Yunfeng},
   url={https://github.com/vra/Thinking-with-Visual-Primitives-pytorch},
   year={2026}
 }
-
-@article{lu2026thinking,
-  title={Thinking with Visual Primitives},
-  author={Lu, Ruijie and Ma, Yiyang and Chen, Xiaokang and others},
-  journal={arXiv preprint arXiv:2506.00000},
-  year={2026}
-}
 ```
+
+Original project: [mitkox/Thinking-with-Visual-Primitives](https://github.com/mitkox/Thinking-with-Visual-Primitives)
 
 ## License
 

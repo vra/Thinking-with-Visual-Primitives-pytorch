@@ -3,7 +3,7 @@
 <p align="center">
     <a href="https://huggingface.co/yunfengwang"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow" alt="Hugging Face"></a>
     <a href="https://huggingface.co/datasets/yunfengwang/TVP-Training-Data"><img src="https://img.shields.io/badge/%F0%9F%93%A6%20Dataset-HF-orange" alt="Dataset"></a>
-    <a href="https://arxiv.org/abs/2506.00000"><img src="https://img.shields.io/badge/%F0%9F%93%91%20Paper-arXiv-b31b1b" alt="Paper"></a>
+    <a href="https://github.com/mitkox/Thinking-with-Visual-Primitives"><img src="https://img.shields.io/badge/%F0%9F%93%91%20Original-Repo-b31b1b" alt="Original"></a>
     <a href="README.md"><img src="https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7%20English-README-blue" alt="English"></a>
 </p>
 
@@ -15,7 +15,7 @@
     <a href="https://huggingface.co/datasets/yunfengwang/TVP-Training-Data">训练数据</a>
 </p>
 
-> 非官方 PyTorch 复现 [*Thinking with Visual Primitives*](https://arxiv.org/abs/2506.00000)。
+> 非官方 PyTorch 复现 [*Thinking with Visual Primitives*](https://github.com/mitkox/Thinking-with-Visual-Primitives)。
 
 > **注意**：受算力限制，所有训练阶段均使用 **LoRA** 微调而非全参数训练。本项目为流水线的**可行性验证**——结果证明该方法可行，但效果仍有提升空间（全参数训练、更大数据集、更大模型）。
 
@@ -561,23 +561,18 @@ RL 阶段使用组相对策略优化（GRPO），配合三类奖励模型：
 
 ## 引用
 
-如果本仓库对您有帮助，请引用我们的实现和原论文：
+如果本仓库对您有帮助，请引用我们的实现和原始项目：
 
 ```bibtex
 @software{wang2026tvp_pytorch,
   title={Thinking with Visual Primitives — PyTorch Implementation},
-  author={Wang, Weishan},
+  author={Wang, Yunfeng},
   url={https://github.com/vra/Thinking-with-Visual-Primitives-pytorch},
   year={2026}
 }
-
-@article{lu2026thinking,
-  title={Thinking with Visual Primitives},
-  author={Lu, Ruijie and Ma, Yiyang and Chen, Xiaokang and others},
-  journal={arXiv preprint arXiv:2506.00000},
-  year={2026}
-}
 ```
+
+原始项目：[mitkox/Thinking-with-Visual-Primitives](https://github.com/mitkox/Thinking-with-Visual-Primitives)
 
 ## 许可证
 

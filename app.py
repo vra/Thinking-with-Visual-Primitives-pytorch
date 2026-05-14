@@ -211,7 +211,7 @@ Upload an image and ask the model to **locate**, **count**, or **reason** about 
 The model outputs structured thinking with bounding boxes `<|box|>` and points `<|point|>` as visual primitives.
 
 [GitHub](https://github.com/vra/Thinking-with-Visual-Primitives-pytorch) |
-[Paper](https://arxiv.org/abs/2506.00000)
+[Original](https://github.com/mitkox/Thinking-with-Visual-Primitives)
         """)
 
         with gr.Row():
