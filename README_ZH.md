@@ -1,6 +1,17 @@
 # Thinking with Visual Primitives — PyTorch 实现
 
-[English](README.md)
+<p align="center">
+    <a href="https://huggingface.co/yunfengwang"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow" alt="Hugging Face"></a>
+    <a href="https://arxiv.org/abs/2506.00000"><img src="https://img.shields.io/badge/%F0%9F%93%91%20Paper-arXiv-b31b1b" alt="Paper"></a>
+    <a href="README.md"><img src="https://img.shields.io/badge/%F0%9F%87%AC%F0%9F%87%A7%20English-README-blue" alt="English"></a>
+</p>
+
+<p align="center">
+    <a href="https://huggingface.co/yunfengwang/TVP-OPD-Qwen2VL-2B">OPD 统一模型</a> |
+    <a href="https://huggingface.co/yunfengwang/TVP-SFTBox-Qwen2VL-2B">SFT Box 专家</a> |
+    <a href="https://huggingface.co/yunfengwang/TVP-SFTPoint-Qwen2VL-2B">SFT Point 专家</a> |
+    <a href="https://huggingface.co/yunfengwang/TVP-Pretrain-Qwen2VL-2B">预训练</a>
+</p>
 
 > 非官方 PyTorch 复现 [*Thinking with Visual Primitives*](https://arxiv.org/abs/2506.00000)。
 
