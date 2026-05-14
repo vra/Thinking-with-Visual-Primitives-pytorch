@@ -240,7 +240,22 @@ pip install -r requirements.txt
 
 **环境要求**：Python ≥ 3.9，CUDA ≥ 11.8，GPU 显存 12GB+（已在 RTX 4070 Ti 12GB 上测试通过）。
 
-### 推理
+### Gradio 交互式 Demo
+
+```bash
+# 启动交互式 Web Demo（带可视化）
+python app.py --model_path outputs/opd/final --load_in_4bit
+
+# 或直接使用 HuggingFace 模型
+python app.py --model_path yunfengwang/TVP-OPD-Qwen2VL-2B --load_in_4bit
+
+# 生成公共分享链接
+python app.py --model_path outputs/opd/final --load_in_4bit --share
+```
+
+上传图片，输入 prompt（如 "Locate the cat"），即可看到模型的结构化推理和边界框可视化。
+
+### 命令行推理
 
 ```bash
 # 单张图片推理

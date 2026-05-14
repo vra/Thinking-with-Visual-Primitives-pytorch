@@ -240,7 +240,22 @@ pip install -r requirements.txt
 
 **Requirements**: Python ≥ 3.9, CUDA ≥ 11.8, GPU with 12GB+ VRAM (tested on RTX 4070 Ti 12GB).
 
-### Inference
+### Gradio Demo
+
+```bash
+# Interactive web demo with visualization
+python app.py --model_path outputs/opd/final --load_in_4bit
+
+# Or use HuggingFace model directly
+python app.py --model_path yunfengwang/TVP-OPD-Qwen2VL-2B --load_in_4bit
+
+# Public shareable link
+python app.py --model_path outputs/opd/final --load_in_4bit --share
+```
+
+Upload an image, type a prompt (e.g., "Locate the cat"), and see the model's structured reasoning with bounding boxes drawn on the image.
+
+### Inference (CLI)
 
 ```bash
 # Single image inference
