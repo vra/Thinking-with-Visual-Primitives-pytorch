@@ -173,9 +173,15 @@ Correct count but no boxes or structured thinking.
 <td>
 
 ```
-<|ref|>2<|/ref|><|box|>[[338,121,630,923],[634,154,888,945]]<|/box|>
+1. **Analyzing the request**
+The user asks me to count the person in this image.
+2. **Object grounding**
+I see 2 instance(s) of <|ref|>person<|/ref|>
+<|box|>[[338,121,630,923],[634,154,888,945]]<|/box|>.
+3. **Conclusion**
+There are 2 person in this image.
 ```
-Outputs count with bounding boxes for each person.
+Structured thinking with count + bounding boxes for each person.
 </td>
 <td><img src="test-images/results/sft_box_img_000.jpg" width="250"></td>
 </tr>
@@ -184,9 +190,15 @@ Outputs count with bounding boxes for each person.
 <td>
 
 ```
-<|ref|>2<|/ref|><|box|>[[339,121,629,923],[638,150,889,941]]<|/box|>
+1. **Analyzing the request**
+The user asks me to count the person in this image.
+2. **Object grounding**
+I see 2 instance(s) of <|ref|>person<|/ref|>
+<|box|>[[339,130,632,923],[642,157,887,940]]<|/box|>.
+3. **Conclusion**
+There are 2 person in this image.
 ```
-Correct count with 2 bounding boxes — matches SFT Box.
+Preserves SFT Box quality — structured counting with boxes.
 </td>
 <td><img src="test-images/results/opd_img_000.jpg" width="250"></td>
 </tr>
@@ -212,9 +224,16 @@ Correct count, no boxes.
 <td>
 
 ```
-There are four sports balls in the image.
+1. **Analyzing the request**
+The user asks me to count out sports balls in this image.
+2. **Object grounding**
+I see 4 instance(s) of <|ref|>sports ball<|/ref|>
+<|box|>[[386,265,653,587],[87,497,445,752],
+[448,587,682,878],[642,456,904,695]]<|/box|>.
+3. **Conclusion**
+There are 4 sports ball in this image.
 ```
-Correct count, plain text (no boxes generated for this example).
+Structured thinking with 4 bounding boxes — fixed by prompt template diversification.
 </td>
 <td><img src="test-images/results/sft_box_img_002.jpg" width="250"></td>
 </tr>
@@ -223,9 +242,16 @@ Correct count, plain text (no boxes generated for this example).
 <td>
 
 ```
-There are four sports balls in the image.
+1. **Analyzing the request**
+The user asks me to count out sports balls in this image.
+2. **Object grounding**
+I see 4 instance(s) of <|ref|>sports ball<|/ref|>
+<|box|>[[386,263,653,587],[87,497,445,752],
+[510,571,675,878],[643,453,904,695]]<|/box|>.
+3. **Conclusion**
+There are 4 sports ball in this image.
 ```
-Preserves correct count.
+Preserves counting ability with accurate boxes.
 </td>
 <td><img src="test-images/results/opd_img_002.jpg" width="250"></td>
 </tr>
@@ -233,10 +259,11 @@ Preserves correct count.
 
 **Key observations:**
 - **Pretrain** learns the visual primitive token format but produces oversized boxes and no structured thinking
-- **SFT Box** adds structured thinking (Analyzing → Grounding → Conclusion) with accurate bounding boxes, handles difficult cases like silhouettes
-- **OPD** preserves SFT Box quality (KL=0.35) with nearly identical box coordinates, while also supporting point-based tasks (maze, path tracing)
-- **Distillation tuning**: low learning rate (1e-6) + temperature=1.0 + high box-task weight prevents catastrophic forgetting during multi-task distillation
-- **neg_ratio tuning**: reducing negative sample ratio from 0.30 to 0.15 fixed the over-rejection problem (silhouette person was previously rejected as "not present")
+- **SFT Box** adds structured thinking (Analyzing → Grounding → Conclusion) with accurate bounding boxes; counting now produces boxes via prompt template diversification (3→12 templates with plural forms)
+- **OPD** preserves SFT Box counting/grounding quality with nearly identical box coordinates, while also supporting point-based tasks (maze, path tracing)
+- **Prompt diversity fix**: expanding counting templates from 3 to 12 (with singular/plural, "the"/"this", varied verbs) fixed the issue where "How many sports balls are in the image?" produced plain text instead of structured thinking with boxes
+- **Distillation tuning**: lr=5e-7 + temperature=1.0 + positive-only grounding data prevents catastrophic forgetting during multi-task distillation
+- **neg_ratio tuning**: reducing negative sample ratio from 0.30 to 0.15 in SFT fixed over-rejection
 
 ## Quick Start
 

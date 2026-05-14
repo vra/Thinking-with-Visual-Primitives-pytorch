@@ -1,0 +1,141 @@
+{
+  "img_000": {
+    "prompt": "How many people are in this image?",
+    "image": "test-images/img_000.jpg",
+    "stages": {
+      "Pretrain": {
+        "response": "<|ref|>2<|/ref|><|box|>[[331,140,999,999],[637,187,999,999]]<|/box|>",
+        "boxes": [
+          [
+            331,
+            140,
+            999,
+            999
+          ],
+          [
+            637,
+            187,
+            999,
+            999
+          ]
+        ],
+        "vis": "test-images/results/pretrain_img_000.jpg"
+      },
+      "SFT Box": {
+        "response": "1. This image contains 2 people.",
+        "boxes": [],
+        "vis": "test-images/results/sft_box_img_000.jpg"
+      },
+      "OPD": {
+        "response": "1. **What is the question?**\nThe question is: **How many people are in this image?**\n2. **What information is needed?**\nThe information needed is: **How many people are in this image?**\n3. **How to ask?**\nI. **Step 1:** Clarify the context of the question.\nI. **Step 2:** Define the audience and purpose of the question.\nI. **Step 3:**State the question clearly.\nI. **Step 4:**Ask the question.\nThe question is: **How many people are in this image?**\n(What is the question? How many people are in this image?)\n(What information is needed? How many people are in this image?)\n(How to ask? I. **Step 1:** Clarify the context of the question. I. **Step 2:** Define the audience and purpose of the question. I. **Step 3:**State the question clearly. I. **Step 4:**Ask the question.)\nThe answer is: **1.**\n(What is the answer? 1.)\n(What information is needed? How many people are in this image?)\n(How to ask? I. **Step 1:** Clarify the context of the question. I. **Step 2:** Define the audience and purpose of the question. I. **Step 3:**State the question clearly. I. **Step 4:**Ask the question.\nThe answer is: **1.**\n(What is the answer? 1.)\n(What information is needed? How many people are in this image?)\n(How to ask? I. **Step 1:** Clarify the context of the question. I. **Step 2:** Define the audience and purpose of the question. I. **Step 3:**State the question clearly. I. **Step 4:**Ask the question.\nThe answer is: **1.**\n(What is the answer? 1.)\n(What information is needed? How many people are in this image?)\n(How to ask? I. **Step 1:** Clarify the context of the question. I. **Step 2:** Define the audience and purpose of the question. I. **Step 3:**State the question clearly. I. **Step 4:**Ask the question.\nThe answer is:",
+        "boxes": [],
+        "vis": "test-images/results/opd_img_000.jpg"
+      }
+    }
+  },
+  "img_001": {
+    "prompt": "Locate the person in the image.",
+    "image": "test-images/img_001.jpg",
+    "stages": {
+      "Pretrain": {
+        "response": "<|ref|>Person<|/ref|><|box|>[[480,201,999,999]]<|/box|>",
+        "boxes": [
+          [
+            480,
+            201,
+            999,
+            999
+          ]
+        ],
+        "vis": "test-images/results/pretrain_img_001.jpg"
+      },
+      "SFT Box": {
+        "response": "1. **Analyzing the request**\nThe user asks me to locate the person in this image.\n2. **Object grounding**\nI see a <|ref|>person<|/ref|><|box|>[[447,457,523,577]]<|/box|>.\n3. **Conclusion**\nThe person is located at the specified coordinates.\nThe person is located at [[447,457,523,577]].",
+        "boxes": [
+          [
+            447,
+            457,
+            523,
+            577
+          ]
+        ],
+        "vis": "test-images/results/sft_box_img_001.jpg"
+      },
+      "OPD": {
+        "response": "1. **Analyzing the request**\nThe user asks me to locate the person in this image.\n2. **Object grounding**\nI see a <|ref|>person<|/ref|><|box|>[[447,457,523,577]]<|/box|>.\n3. **Conclusion**\nThe person is located at the specified coordinates.\nThe person is located at [[447,457,523,577]].",
+        "boxes": [
+          [
+            447,
+            457,
+            523,
+            577
+          ]
+        ],
+        "vis": "test-images/results/opd_img_001.jpg"
+      }
+    }
+  },
+  "img_002": {
+    "prompt": "How many sports balls are in this image?",
+    "image": "test-images/img_002.jpg",
+    "stages": {
+      "Pretrain": {
+        "response": "There are four sports balls in the image.",
+        "boxes": [],
+        "vis": "test-images/results/pretrain_img_002.jpg"
+      },
+      "SFT Box": {
+        "response": "There are four sports balls in this image.",
+        "boxes": [],
+        "vis": "test-images/results/sft_box_img_002.jpg"
+      },
+      "OPD": {
+        "response": "There are four sports balls in this image.",
+        "boxes": [],
+        "vis": "test-images/results/opd_img_002.jpg"
+      }
+    }
+  },
+  "img_003": {
+    "prompt": "Locate the sports ball in the image.",
+    "image": "test-images/img_003.jpg",
+    "stages": {
+      "Pretrain": {
+        "response": "<|ref|>[[278,267,729,759]]<|/ref|>",
+        "boxes": [
+          [
+            278,
+            267,
+            729,
+            759
+          ]
+        ],
+        "vis": "test-images/results/pretrain_img_003.jpg"
+      },
+      "SFT Box": {
+        "response": "1. **Analyzing the request**\nThe user asks me to locate the sports ball in this image.\n2. **Object grounding**\nI see a <|ref|>sports ball<|/ref|><|box|>[[277,261,477,537]]<|/box|>.\n3. **Conclusion**\nThe sports ball is located at the specified coordinates.\nThe sports ball is located at [[277,261,477,537]].",
+        "boxes": [
+          [
+            277,
+            261,
+            477,
+            537
+          ]
+        ],
+        "vis": "test-images/results/sft_box_img_003.jpg"
+      },
+      "OPD": {
+        "response": "1. **Analyzing the request**\nThe user asks me to locate the sports ball in this image.\n2. **Object grounding**\nI see a <|ref|>sports ball<|/ref|><|box|>[[277,262,477,527]]<|/box|>.\n3. **Conclusion**\nThe sports ball is located at the specified coordinates.\nThe sports ball is located at [[277,262,477,527]].",
+        "boxes": [
+          [
+            277,
+            262,
+            477,
+            527
+          ]
+        ],
+        "vis": "test-images/results/opd_img_003.jpg"
+      }
+    }
+  }
+}

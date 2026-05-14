@@ -19,7 +19,7 @@ load_in_4bit: true
 load_in_8bit: false
 
 datasets:
-  - path: "data/sft/grounding/sft_grounding.jsonl"
+  - path: "data/sft/grounding/sft_grounding_opd.jsonl"
     image_root: "data/coco/train/coco/train"
     task_type: "grounding"
     weight: 2.0
@@ -42,8 +42,8 @@ datasets:
 
 batch_size: 1
 gradient_accumulation_steps: 16
-epochs: 3
-learning_rate: 1.0e-6
+epochs: 1
+learning_rate: 5.0e-7
 temperature: 1.0
 ce_coeff: 0.5
 weight_decay: 0.01
