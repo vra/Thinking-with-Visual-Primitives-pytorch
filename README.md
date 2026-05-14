@@ -17,7 +17,7 @@
 
 > Unofficial PyTorch reproduction of [*Thinking with Visual Primitives*](https://arxiv.org/abs/2506.00000).
 
-> **Note**: Due to compute constraints (single RTX 4070 Ti 12GB), all training stages use **LoRA** fine-tuning instead of full-parameter training. This is a **feasibility verification** of the pipeline — results demonstrate the approach works but have room for improvement with more compute (full fine-tuning, larger datasets, bigger models).
+> **Note**: Due to compute constraints, all training stages use **LoRA** fine-tuning instead of full-parameter training. This is a **feasibility verification** of the pipeline — results demonstrate the approach works but have room for improvement with more compute (full fine-tuning, larger datasets, bigger models).
 
 This project implements a multi-stage training pipeline that teaches multimodal LLMs to reason with **bounding boxes** and **points** as first-class "thought units" — interleaving spatial coordinates within chain-of-thought to close the **Reference Gap** in visual reasoning.
 
