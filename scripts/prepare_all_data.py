@@ -28,6 +28,30 @@ from tqdm import tqdm
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
+
+IRREGULAR_PLURALS = {
+    "person": "people",
+    "mouse": "mice",
+    "sheep": "sheep",
+    "knife": "knives",
+    "child": "children",
+}
+
+
+def pluralize(word: str) -> str:
+    """Simple English pluralization for COCO category names."""
+    low = word.lower()
+    if low in IRREGULAR_PLURALS:
+        return IRREGULAR_PLURALS[low]
+    if " " in word:
+        parts = word.rsplit(" ", 1)
+        return parts[0] + " " + pluralize(parts[1])
+    if word.endswith(("s", "sh", "ch", "x", "z")):
+        return word + "es"
+    if word.endswith("y") and word[-2] not in "aeiou":
+        return word[:-1] + "ies"
+    return word + "s"
+
 from model.special_tokens import normalize_coordinate
 
 
@@ -225,11 +249,21 @@ def generate_counting_data(annotations: dict, output_path: Path, num_samples: in
     records = []
     templates = [
         "How many {category} are in this image?",
+        "How many {category} are in the image?",
+        "How many {plural} are in this image?",
+        "How many {plural} are in the image?",
         "Count the number of {category}.",
+        "Count the number of {plural}.",
+        "Count the {plural} in the image.",
+        "Count all {plural} in this image.",
         "What is the total count of {category}?",
+        "What is the total count of {plural}?",
+        "How many {plural} can you see?",
+        "How many {plural} are there in the image?",
     ]
     for img_info, cat_name, boxes in candidates:
-        question = random.choice(templates).format(category=cat_name)
+        plural_name = pluralize(cat_name)
+        question = random.choice(templates).format(category=cat_name, plural=plural_name)
         thinking = generate_counting_thinking(cat_name, boxes, len(boxes))
         records.append({
             "image": str(Path("images") / img_info["file_name"]),

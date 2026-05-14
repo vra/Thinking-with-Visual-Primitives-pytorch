@@ -30,6 +30,40 @@ from utils.coco_categories import COCO_CATS
 
 random.seed(42)
 
+IRREGULAR_PLURALS = {
+    "person": "people",
+    "mouse": "mice",
+    "sheep": "sheep",
+    "knife": "knives",
+    "child": "children",
+}
+
+
+def pluralize(word: str) -> str:
+    low = word.lower()
+    if low in IRREGULAR_PLURALS:
+        return IRREGULAR_PLURALS[low]
+    if " " in word:
+        parts = word.rsplit(" ", 1)
+        return parts[0] + " " + pluralize(parts[1])
+    if word.endswith(("s", "sh", "ch", "x", "z")):
+        return word + "es"
+    if word.endswith("y") and word[-2] not in "aeiou":
+        return word[:-1] + "ies"
+    return word + "s"
+
+
+GROUNDING_TEMPLATES = [
+    "Locate the {category} in the image.",
+    "Locate the {category} in this image.",
+    "Find the {category} in the image.",
+    "Where is the {category} in the image?",
+    "Where is the {category}?",
+    "Show me the {category} in the image.",
+    "Point out the {category}.",
+    "Locate the {plural} in the image.",
+]
+
 
 def format_box_token(boxes):
     """Format boxes into <|box|>[[x1,y1,x2,y2],...]<|/box|>."""
@@ -127,11 +161,14 @@ def main():
         if not s["boxes"]:
             continue
         boxes = s["boxes"][:MAX_BOXES_PER_SAMPLE]
+        cat = s["category"]
+        plural = pluralize(cat)
+        question = random.choice(GROUNDING_TEMPLATES).format(category=cat, plural=plural)
         positive_samples.append({
             "image": s["image"],
-            "question": f"Locate the {s['category']} in the image.",
-            "thinking": build_positive_thinking(s["category"], boxes),
-            "answer": build_positive_answer(s["category"], boxes),
+            "question": question,
+            "thinking": build_positive_thinking(cat, boxes),
+            "answer": build_positive_answer(cat, boxes),
             "boxes": boxes,
             "points": [],
         })
@@ -148,9 +185,11 @@ def main():
             n_neg = min(2, len(absent))
             for neg_label in random.sample(absent, n_neg):
                 category = COCO_CATS[neg_label]
+                plural = pluralize(category)
+                question = random.choice(GROUNDING_TEMPLATES).format(category=category, plural=plural)
                 negative_samples.append({
                     "image": img_rel,
-                    "question": f"Locate the {category} in the image.",
+                    "question": question,
                     "thinking": build_negative_thinking(category),
                     "answer": build_negative_answer(category),
                     "boxes": [],
