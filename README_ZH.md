@@ -29,10 +29,10 @@ The cat is located at the specified coordinates.
 
 | 模型 | HuggingFace | 说明 |
 |------|-------------|------|
-| 预训练 | [TBD](#) | 学会视觉原语格式的基座模型 |
-| SFT Box 专家 | [TBD](#) | Grounding 专家（计数、空间推理） |
-| SFT Point 专家 | [TBD](#) | Pointing 专家（迷宫、路径追踪） |
-| OPD 统一模型 | [TBD](#) | 最终蒸馏模型（兼具两种能力） |
+| 预训练 | [yunfengwang/TVP-Pretrain-Qwen2VL-2B](https://huggingface.co/yunfengwang/TVP-Pretrain-Qwen2VL-2B) | 学会视觉原语格式的基座模型 |
+| SFT Box 专家 | [yunfengwang/TVP-SFTBox-Qwen2VL-2B](https://huggingface.co/yunfengwang/TVP-SFTBox-Qwen2VL-2B) | Grounding 专家（计数、空间推理） |
+| SFT Point 专家 | [yunfengwang/TVP-SFTPoint-Qwen2VL-2B](https://huggingface.co/yunfengwang/TVP-SFTPoint-Qwen2VL-2B) | Pointing 专家（迷宫、路径追踪） |
+| OPD 统一模型 | [yunfengwang/TVP-OPD-Qwen2VL-2B](https://huggingface.co/yunfengwang/TVP-OPD-Qwen2VL-2B) | 最终蒸馏模型（兼具两种能力） |
 
 ## 示例结果
 
@@ -272,7 +272,7 @@ from PIL import Image
 from model import VisualPrimitiveVLM
 from transformers import AutoProcessor
 
-model = VisualPrimitiveVLM.from_pretrained("outputs/opd/final", device_map="cuda")
+model = VisualPrimitiveVLM.from_pretrained("yunfengwang/TVP-OPD-Qwen2VL-2B", device_map="cuda")
 model.eval()
 tokenizer = model.tokenizer
 processor = AutoProcessor.from_pretrained(

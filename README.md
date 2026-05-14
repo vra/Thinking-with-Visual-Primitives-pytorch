@@ -29,10 +29,10 @@ The cat is located at the specified coordinates.
 
 | Model | HuggingFace | Description |
 |-------|-------------|-------------|
-| Pretrain | [TBD](#) | Base model with visual primitive format |
-| SFT Box Expert | [TBD](#) | Grounding specialist (counting, spatial) |
-| SFT Point Expert | [TBD](#) | Pointing specialist (maze, path tracing) |
-| OPD Unified | [TBD](#) | Final distilled model (both capabilities) |
+| Pretrain | [yunfengwang/TVP-Pretrain-Qwen2VL-2B](https://huggingface.co/yunfengwang/TVP-Pretrain-Qwen2VL-2B) | Base model with visual primitive format |
+| SFT Box Expert | [yunfengwang/TVP-SFTBox-Qwen2VL-2B](https://huggingface.co/yunfengwang/TVP-SFTBox-Qwen2VL-2B) | Grounding specialist (counting, spatial) |
+| SFT Point Expert | [yunfengwang/TVP-SFTPoint-Qwen2VL-2B](https://huggingface.co/yunfengwang/TVP-SFTPoint-Qwen2VL-2B) | Pointing specialist (maze, path tracing) |
+| OPD Unified | [yunfengwang/TVP-OPD-Qwen2VL-2B](https://huggingface.co/yunfengwang/TVP-OPD-Qwen2VL-2B) | Final distilled model (both capabilities) |
 
 ## Example Results
 
@@ -272,7 +272,7 @@ from PIL import Image
 from model import VisualPrimitiveVLM
 from transformers import AutoProcessor
 
-model = VisualPrimitiveVLM.from_pretrained("outputs/opd/final", device_map="cuda")
+model = VisualPrimitiveVLM.from_pretrained("yunfengwang/TVP-OPD-Qwen2VL-2B", device_map="cuda")
 model.eval()
 tokenizer = model.tokenizer
 processor = AutoProcessor.from_pretrained(
