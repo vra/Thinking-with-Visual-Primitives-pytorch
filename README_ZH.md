@@ -78,12 +78,12 @@ The person is located at [[511,208,738,963]].
 1. **Analyzing the request**
 The user asks me to locate the person in this image.
 2. **Object grounding**
-I see a <|ref|>person<|/ref|><|box|>[[531,901,568,958]]<|/box|>.
+I see a <|ref|>person<|/ref|><|box|>[[513,208,738,963]]<|/box|>.
 3. **Conclusion**
 The person is located at the specified coordinates.
-The person is located at [[531,901,568,958]].
+The person is located at [[513,208,738,963]].
 ```
-保持结构化思维，框偏小（仅检测到脚部区域）。
+保持 SFT Box 质量——框坐标几乎一致。
 </td>
 <td><img src="test-images/results/opd_img_001.jpg" width="250"></td>
 </tr>
@@ -129,12 +129,12 @@ The sports ball is located at [[277,244,479,510]].
 1. **Analyzing the request**
 The user asks me to locate the sports ball in this image.
 2. **Object grounding**
-I see a <|ref|>sports ball<|/ref|><|box|>[[277,240,479,521]]<|/box|>.
+I see a <|ref|>sports ball<|/ref|><|box|>[[277,244,479,510]]<|/box|>.
 3. **Conclusion**
 The sports ball is located at the specified coordinates.
-The sports ball is located at [[277,240,479,521]].
+The sports ball is located at [[277,244,479,510]].
 ```
-与 SFT Box 质量接近（KL=0.88）。
+与 SFT Box 质量一致（KL=0.35）。
 </td>
 <td><img src="test-images/results/opd_img_003.jpg" width="250"></td>
 </tr>
@@ -171,9 +171,9 @@ There are two people in the image.
 <td>
 
 ```
-I don't know how many people are in the image. It can be 2 or 3.
+<|ref|>2<|/ref|><|box|>[[339,121,629,923],[638,150,889,941]]<|/box|>
 ```
-不确定回答——计数能力在蒸馏中有退化。
+正确计数并输出 2 个框——与 SFT Box 一致。
 </td>
 <td><img src="test-images/results/opd_img_000.jpg" width="250"></td>
 </tr>
@@ -221,7 +221,8 @@ There are four sports balls in the image.
 **关键发现：**
 - **预训练**阶段学会了视觉原语 token 格式，但框过大，缺少结构化思维
 - **SFT Box** 引入结构化思维（分析意图 → 目标定位 → 结论），生成准确的边界框，能处理剪影等困难样本
-- **OPD** 保持定位质量（KL=0.88），同时支持基于点的任务（迷宫、路径追踪），但计数带框能力仍需改进
+- **OPD** 保持 SFT Box 质量（KL=0.35），框坐标几乎一致，同时支持基于点的任务（迷宫、路径追踪）
+- **蒸馏调优**：低学习率（1e-6）+ temperature=1.0 + 高 box 任务权重，防止多任务蒸馏中的灾难性遗忘
 - **neg_ratio 调优**：将负样本比例从 0.30 降至 0.15，解决了过度拒绝问题（之前人物剪影被误判为"不存在"）
 
 ## 快速开始

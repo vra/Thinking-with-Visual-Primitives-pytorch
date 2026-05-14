@@ -22,11 +22,11 @@ datasets:
   - path: "data/sft/grounding/sft_grounding.jsonl"
     image_root: "data/coco/train/coco/train"
     task_type: "grounding"
-    weight: 1.0
+    weight: 2.0
   - path: "data/sft/counting/counting_data.jsonl"
     image_root: "data/coco/train/coco/train"
     task_type: "counting"
-    weight: 1.0
+    weight: 2.0
   - path: "data/sft/spatial/spatial_data.jsonl"
     image_root: "data/sft/spatial"
     task_type: "spatial"
@@ -43,11 +43,11 @@ datasets:
 batch_size: 1
 gradient_accumulation_steps: 16
 epochs: 3
-learning_rate: 5.0e-6
-temperature: 1.5
-ce_coeff: 2.0
+learning_rate: 1.0e-6
+temperature: 1.0
+ce_coeff: 0.5
 weight_decay: 0.01
-warmup_ratio: 0.03
+warmup_ratio: 0.05
 max_length: 1024
 image_size: 336
 num_workers: 0

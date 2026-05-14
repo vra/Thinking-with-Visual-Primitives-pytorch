@@ -78,12 +78,12 @@ Structured thinking with accurate box on the silhouette.
 1. **Analyzing the request**
 The user asks me to locate the person in this image.
 2. **Object grounding**
-I see a <|ref|>person<|/ref|><|box|>[[531,901,568,958]]<|/box|>.
+I see a <|ref|>person<|/ref|><|box|>[[513,208,738,963]]<|/box|>.
 3. **Conclusion**
 The person is located at the specified coordinates.
-The person is located at [[531,901,568,958]].
+The person is located at [[513,208,738,963]].
 ```
-Preserves structured thinking. Box is smaller (detects feet area).
+Preserves SFT Box quality — nearly identical box coordinates.
 </td>
 <td><img src="test-images/results/opd_img_001.jpg" width="250"></td>
 </tr>
@@ -129,12 +129,12 @@ Correct label, tight box, full structured thinking.
 1. **Analyzing the request**
 The user asks me to locate the sports ball in this image.
 2. **Object grounding**
-I see a <|ref|>sports ball<|/ref|><|box|>[[277,240,479,521]]<|/box|>.
+I see a <|ref|>sports ball<|/ref|><|box|>[[277,244,479,510]]<|/box|>.
 3. **Conclusion**
 The sports ball is located at the specified coordinates.
-The sports ball is located at [[277,240,479,521]].
+The sports ball is located at [[277,244,479,510]].
 ```
-Nearly identical quality to SFT Box (KL=0.88).
+Identical quality to SFT Box (KL=0.35).
 </td>
 <td><img src="test-images/results/opd_img_003.jpg" width="250"></td>
 </tr>
@@ -171,9 +171,9 @@ Outputs count with bounding boxes for each person.
 <td>
 
 ```
-I don't know how many people are in the image. It can be 2 or 3.
+<|ref|>2<|/ref|><|box|>[[339,121,629,923],[638,150,889,941]]<|/box|>
 ```
-Uncertain response — counting quality degraded during distillation.
+Correct count with 2 bounding boxes — matches SFT Box.
 </td>
 <td><img src="test-images/results/opd_img_000.jpg" width="250"></td>
 </tr>
@@ -220,8 +220,9 @@ Preserves correct count.
 
 **Key observations:**
 - **Pretrain** learns the visual primitive token format but produces oversized boxes and no structured thinking
-- **SFT Box** adds structured thinking (Analyzing → Grounding → Conclusion) with accurate bounding boxes, and handles difficult cases like silhouettes
-- **OPD** preserves grounding quality (KL=0.88) while supporting point-based tasks (maze, path tracing), but counting with boxes still needs improvement
+- **SFT Box** adds structured thinking (Analyzing → Grounding → Conclusion) with accurate bounding boxes, handles difficult cases like silhouettes
+- **OPD** preserves SFT Box quality (KL=0.35) with nearly identical box coordinates, while also supporting point-based tasks (maze, path tracing)
+- **Distillation tuning**: low learning rate (1e-6) + temperature=1.0 + high box-task weight prevents catastrophic forgetting during multi-task distillation
 - **neg_ratio tuning**: reducing negative sample ratio from 0.30 to 0.15 fixed the over-rejection problem (silhouette person was previously rejected as "not present")
 
 ## Quick Start

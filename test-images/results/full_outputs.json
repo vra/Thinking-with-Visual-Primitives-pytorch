@@ -38,11 +38,11 @@
   "opd": {
     "test-images/img_000.jpg": {
       "prompt": "How many people are in the image?",
-      "response": "I don't know how many people are in the image. It can be 2 or 3."
+      "response": "<|ref|>2<|/ref|><|box|>[[339,121),(629,923],[638,150),(889,941]]<|/box|>"
     },
     "test-images/img_001.jpg": {
       "prompt": "Locate the person in the image.",
-      "response": "1. **Analyzing the request**\nThe user asks me to locate the person in this image.\n2. **Object grounding**\nI see a <|ref|>person<|/ref|><|box|>[[531,901,568,958]]<|/box|>.\n3. **Conclusion**\nThe person is located at the specified coordinates.\nThe person is located at [[531,901,568,958]]."
+      "response": "1. **Analyzing the request**\nThe user asks me to locate the person in this image.\n2. **Object grounding**\nI see a <|ref|>person<|/ref|><|box|>[[513,208,738,963]]<|/box|>.\n3. **Conclusion**\nThe person is located at the specified coordinates.\nThe person is located at [[513,208,738,963]]."
     },
     "test-images/img_002.jpg": {
       "prompt": "How many sports balls are in the image?",
@@ -50,7 +50,7 @@
     },
     "test-images/img_003.jpg": {
       "prompt": "Locate the sports ball in the image.",
-      "response": "1. **Analyzing the request**\nThe user asks me to locate the sports ball in this image.\n2. **Object grounding**\nI see a <|ref|>sports ball<|/ref|><|box|>[[277,240,479,521]]<|/box|>.\n3. **Conclusion**\nThe sports ball is located at the specified coordinates.\nThe sports ball is located at [[277,240,479,521]]."
+      "response": "1. **Analyzing the request**\nThe user asks me to locate the sports ball in this image.\n2. **Object grounding**\nI see a <|ref|>sports ball<|/ref|><|box|>[[277,244,479,510]]<|/box|>.\n3. **Conclusion**\nThe sports ball is located at the specified coordinates.\nThe sports ball is located at [[277,244,479,510]]."
     }
   }
 }
