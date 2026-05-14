@@ -2,6 +2,7 @@
 
 <p align="center">
     <a href="https://huggingface.co/yunfengwang"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow" alt="Hugging Face"></a>
+    <a href="https://huggingface.co/datasets/yunfengwang/TVP-Training-Data"><img src="https://img.shields.io/badge/%F0%9F%93%A6%20Dataset-HF-orange" alt="Dataset"></a>
     <a href="https://arxiv.org/abs/2506.00000"><img src="https://img.shields.io/badge/%F0%9F%93%91%20Paper-arXiv-b31b1b" alt="Paper"></a>
     <a href="README_ZH.md"><img src="https://img.shields.io/badge/%F0%9F%87%A8%F0%9F%87%B3%20%E4%B8%AD%E6%96%87-README-blue" alt="中文文档"></a>
 </p>
@@ -10,7 +11,8 @@
     <a href="https://huggingface.co/yunfengwang/TVP-OPD-Qwen2VL-2B">OPD Model</a> |
     <a href="https://huggingface.co/yunfengwang/TVP-SFTBox-Qwen2VL-2B">SFT Box Expert</a> |
     <a href="https://huggingface.co/yunfengwang/TVP-SFTPoint-Qwen2VL-2B">SFT Point Expert</a> |
-    <a href="https://huggingface.co/yunfengwang/TVP-Pretrain-Qwen2VL-2B">Pretrain</a>
+    <a href="https://huggingface.co/yunfengwang/TVP-Pretrain-Qwen2VL-2B">Pretrain</a> |
+    <a href="https://huggingface.co/datasets/yunfengwang/TVP-Training-Data">Dataset</a>
 </p>
 
 > Unofficial PyTorch reproduction of [*Thinking with Visual Primitives*](https://arxiv.org/abs/2506.00000).
