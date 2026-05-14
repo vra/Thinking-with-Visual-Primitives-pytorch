@@ -53,6 +53,57 @@ The cat is located at the specified coordinates.
 
 We compare the model outputs across three training stages on the same images, showing complete model responses.
 
+### Grounding: "Locate the dog in the image."
+
+<table>
+<tr><th>Stage</th><th>Complete Output</th><th>Visualization</th></tr>
+<tr>
+<td><b>Pretrain</b></td>
+<td>
+
+```
+<|ref|>[[108,64,999,999]]<|/ref|>
+```
+No label, wrong tag usage, oversized box (covers entire image).
+</td>
+<td><img src="test-images/results/pretrain_img_004.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
+
+```
+1. **Analyzing the request**
+The user asks me to locate the dog in this image.
+2. **Object grounding**
+I see a <|ref|>dog<|/ref|><|box|>[[112,68,782,953]]<|/box|>.
+3. **Conclusion**
+The dog is located at the specified coordinates.
+The dog is located at [[112,68,782,953]].
+```
+Structured thinking with accurate box tightly around the dog.
+</td>
+<td><img src="test-images/results/sft_box_img_004.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
+
+```
+1. **Analyzing the request**
+The user asks me to locate the dog in this image.
+2. **Object grounding**
+I see a <|ref|>dog<|/ref|><|box|>[[112,68,782,953]]<|/box|>.
+3. **Conclusion**
+The dog is located at the specified coordinates.
+The dog is located at [[112,68,782,953]].
+```
+Identical to SFT Box — box coordinates match exactly.
+</td>
+<td><img src="test-images/results/opd_img_004.jpg" width="250"></td>
+</tr>
+</table>
+
 ### Grounding: "Locate the person in the image."
 
 <table>
@@ -262,7 +313,7 @@ Preserves counting ability with accurate boxes.
 **Key observations:**
 - **Pretrain** learns the visual primitive token format but produces oversized boxes and no structured thinking
 - **SFT Box** adds structured thinking (Analyzing → Grounding → Conclusion) with accurate bounding boxes; counting now produces boxes via prompt template diversification (3→12 templates with plural forms)
-- **OPD** preserves SFT Box counting/grounding quality with nearly identical box coordinates, while also supporting point-based tasks (maze, path tracing)
+- **OPD** combines box and point capabilities into one model via distillation, but may lose some SFT Box quality on edge cases (e.g., silhouette detection) due to multi-task trade-offs
 - **Prompt diversity fix**: expanding counting templates from 3 to 12 (with singular/plural, "the"/"this", varied verbs) fixed the issue where "How many sports balls are in the image?" produced plain text instead of structured thinking with boxes
 - **Distillation tuning**: lr=5e-7 + temperature=1.0 + positive-only grounding data prevents catastrophic forgetting during multi-task distillation
 - **neg_ratio tuning**: reducing negative sample ratio from 0.30 to 0.15 in SFT fixed over-rejection

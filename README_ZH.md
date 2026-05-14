@@ -53,6 +53,57 @@ The cat is located at the specified coordinates.
 
 我们在相同图片上对比三个训练阶段的完整模型输出。
 
+### 定位任务："Locate the dog in the image."
+
+<table>
+<tr><th>阶段</th><th>完整输出</th><th>可视化</th></tr>
+<tr>
+<td><b>预训练</b></td>
+<td>
+
+```
+<|ref|>[[108,64,999,999]]<|/ref|>
+```
+无标签，tag 使用错误，框过大（覆盖整张图）。
+</td>
+<td><img src="test-images/results/pretrain_img_004.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>SFT Box</b></td>
+<td>
+
+```
+1. **Analyzing the request**
+The user asks me to locate the dog in this image.
+2. **Object grounding**
+I see a <|ref|>dog<|/ref|><|box|>[[112,68,782,953]]<|/box|>.
+3. **Conclusion**
+The dog is located at the specified coordinates.
+The dog is located at [[112,68,782,953]].
+```
+结构化思维，框准确包裹住整只狗。
+</td>
+<td><img src="test-images/results/sft_box_img_004.jpg" width="250"></td>
+</tr>
+<tr>
+<td><b>OPD</b></td>
+<td>
+
+```
+1. **Analyzing the request**
+The user asks me to locate the dog in this image.
+2. **Object grounding**
+I see a <|ref|>dog<|/ref|><|box|>[[112,68,782,953]]<|/box|>.
+3. **Conclusion**
+The dog is located at the specified coordinates.
+The dog is located at [[112,68,782,953]].
+```
+与 SFT Box 完全一致。
+</td>
+<td><img src="test-images/results/opd_img_004.jpg" width="250"></td>
+</tr>
+</table>
+
 ### 定位任务："Locate the person in the image."
 
 <table>
@@ -236,7 +287,7 @@ There are four sports balls in the image.
 **关键发现：**
 - **预训练**阶段学会了视觉原语 token 格式，但框过大，缺少结构化思维
 - **SFT Box** 引入结构化思维（分析意图 → 目标定位 → 结论），生成准确的边界框；通过 prompt 模板多样化（3→12 种，含单复数、不同动词），修复了 counting 不出框的问题
-- **OPD** 保持 SFT Box counting/grounding 质量，框坐标几乎一致，同时支持基于点的任务（迷宫、路径追踪）
+- **OPD** 通过蒸馏将 box 和 point 能力合并为一个模型，但在边界案例（如剪影检测）上可能损失部分 SFT Box 质量
 - **Prompt 多样化修复**：将 counting 模板从 3 种扩展到 12 种（含单/复数、"the"/"this"、不同动词），解决了 "How many sports balls are in the image?" 只输出纯文本不出框的问题
 - **蒸馏调优**：lr=5e-7 + temperature=1.0 + OPD 仅用正样本 grounding 数据，防止灾难性遗忘
 - **neg_ratio 调优**：SFT 阶段将负样本比例从 0.30 降至 0.15，解决过度拒绝
