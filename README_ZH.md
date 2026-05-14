@@ -91,12 +91,12 @@ The person is located at [[511,208,738,963]].
 1. **Analyzing the request**
 The user asks me to locate the person in this image.
 2. **Object grounding**
-I see a <|ref|>person<|/ref|><|box|>[[513,208,738,963]]<|/box|>.
+After carefully scanning the entire image,
+I do not see any person present.
 3. **Conclusion**
-The person is located at the specified coordinates.
-The person is located at [[513,208,738,963]].
+There is no person in this image.
 ```
-保持 SFT Box 质量——框坐标几乎一致。
+已知限制：多任务蒸馏后剪影检测退化（SFT Box 能正确检测）。
 </td>
 <td><img src="test-images/results/opd_img_001.jpg" width="250"></td>
 </tr>

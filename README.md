@@ -91,12 +91,12 @@ Structured thinking with accurate box on the silhouette.
 1. **Analyzing the request**
 The user asks me to locate the person in this image.
 2. **Object grounding**
-I see a <|ref|>person<|/ref|><|box|>[[513,208,738,963]]<|/box|>.
+After carefully scanning the entire image,
+I do not see any person present.
 3. **Conclusion**
-The person is located at the specified coordinates.
-The person is located at [[513,208,738,963]].
+There is no person in this image.
 ```
-Preserves SFT Box quality — nearly identical box coordinates.
+Known limitation: OPD loses silhouette detection after multi-task distillation (SFT Box handles it correctly).
 </td>
 <td><img src="test-images/results/opd_img_001.jpg" width="250"></td>
 </tr>
