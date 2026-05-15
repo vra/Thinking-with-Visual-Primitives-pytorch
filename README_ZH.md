@@ -1,6 +1,7 @@
 # Thinking with Visual Primitives — PyTorch 实现
 
 <p align="center">
+    <a href="https://huggingface.co/spaces/yunfengwang/TVP-Demo"><img src="https://img.shields.io/badge/%F0%9F%8E%AF%20Demo-HF%20Spaces-ff69b4" alt="Demo"></a>
     <a href="https://huggingface.co/yunfengwang"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow" alt="Hugging Face"></a>
     <a href="https://huggingface.co/datasets/yunfengwang/TVP-Training-Data"><img src="https://img.shields.io/badge/%F0%9F%93%A6%20Dataset-HF-orange" alt="Dataset"></a>
     <a href="https://github.com/mitkox/Thinking-with-Visual-Primitives"><img src="https://img.shields.io/badge/%F0%9F%93%91%20Original-Repo-b31b1b" alt="Original"></a>
@@ -8,6 +9,7 @@
 </p>
 
 <p align="center">
+    <a href="https://huggingface.co/spaces/yunfengwang/TVP-Demo">在线 Demo</a> |
     <a href="https://huggingface.co/yunfengwang/TVP-OPD-Qwen2VL-2B">OPD 统一模型</a> |
     <a href="https://huggingface.co/yunfengwang/TVP-SFTBox-Qwen2VL-2B">SFT Box 专家</a> |
     <a href="https://huggingface.co/yunfengwang/TVP-SFTPoint-Qwen2VL-2B">SFT Point 专家</a> |
@@ -226,9 +228,15 @@ There are two people in the image.
 <td>
 
 ```
-<|ref|>2<|/ref|><|box|>[[338,121,630,923],[634,154,888,945]]<|/box|>
+1. **Analyzing the request**
+The user asks me to count the person in this image.
+2. **Object grounding**
+I see 2 instance(s) of <|ref|>person<|/ref|>
+<|box|>[[338,121,630,923],[634,154,888,945]]<|/box|>.
+3. **Conclusion**
+There are 2 person in this image.
 ```
-输出计数并为每个人标注边界框。
+结构化思维 + 计数 + 为每个人标注边界框。
 </td>
 <td><img src="test-images/results/sft_box_img_000.jpg" width="250"></td>
 </tr>
@@ -237,9 +245,15 @@ There are two people in the image.
 <td>
 
 ```
-<|ref|>2<|/ref|><|box|>[[339,121,629,923],[638,150,889,941]]<|/box|>
+1. **Analyzing the request**
+The user asks me to count the person in this image.
+2. **Object grounding**
+I see 2 instance(s) of <|ref|>person<|/ref|>
+<|box|>[[339,130,632,923],[642,157,887,940]]<|/box|>.
+3. **Conclusion**
+There are 2 person in this image.
 ```
-正确计数并输出 2 个框——与 SFT Box 一致。
+保持结构化计数能力，边界框与 SFT Box 一致。
 </td>
 <td><img src="test-images/results/opd_img_000.jpg" width="250"></td>
 </tr>
@@ -265,9 +279,16 @@ There are four sports balls in the image.
 <td>
 
 ```
-There are four sports balls in the image.
+1. **Analyzing the request**
+The user asks me to count out sports balls in this image.
+2. **Object grounding**
+I see 4 instance(s) of <|ref|>sports ball<|/ref|>
+<|box|>[[386,265,653,587],[87,497,445,752],
+[448,587,682,878],[642,456,904,695]]<|/box|>.
+3. **Conclusion**
+There are 4 sports ball in this image.
 ```
-正确计数（本例未生成框）。
+结构化思维 + 4 个边界框——通过 prompt 模板多样化修复。
 </td>
 <td><img src="test-images/results/sft_box_img_002.jpg" width="250"></td>
 </tr>
@@ -276,9 +297,16 @@ There are four sports balls in the image.
 <td>
 
 ```
-There are four sports balls in the image.
+1. **Analyzing the request**
+The user asks me to count out sports balls in this image.
+2. **Object grounding**
+I see 4 instance(s) of <|ref|>sports ball<|/ref|>
+<|box|>[[386,263,653,587],[87,497,445,752],
+[510,571,675,878],[643,453,904,695]]<|/box|>.
+3. **Conclusion**
+There are 4 sports ball in this image.
 ```
-保持正确计数。
+保持计数能力，生成准确边界框。
 </td>
 <td><img src="test-images/results/opd_img_002.jpg" width="250"></td>
 </tr>

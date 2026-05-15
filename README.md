@@ -1,6 +1,7 @@
 # Thinking with Visual Primitives — PyTorch Implementation
 
 <p align="center">
+    <a href="https://huggingface.co/spaces/yunfengwang/TVP-Demo"><img src="https://img.shields.io/badge/%F0%9F%8E%AF%20Demo-HF%20Spaces-ff69b4" alt="Demo"></a>
     <a href="https://huggingface.co/yunfengwang"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Models-yellow" alt="Hugging Face"></a>
     <a href="https://huggingface.co/datasets/yunfengwang/TVP-Training-Data"><img src="https://img.shields.io/badge/%F0%9F%93%A6%20Dataset-HF-orange" alt="Dataset"></a>
     <a href="https://github.com/mitkox/Thinking-with-Visual-Primitives"><img src="https://img.shields.io/badge/%F0%9F%93%91%20Original-Repo-b31b1b" alt="Original"></a>
@@ -8,6 +9,7 @@
 </p>
 
 <p align="center">
+    <a href="https://huggingface.co/spaces/yunfengwang/TVP-Demo">Online Demo</a> |
     <a href="https://huggingface.co/yunfengwang/TVP-OPD-Qwen2VL-2B">OPD Model</a> |
     <a href="https://huggingface.co/yunfengwang/TVP-SFTBox-Qwen2VL-2B">SFT Box Expert</a> |
     <a href="https://huggingface.co/yunfengwang/TVP-SFTPoint-Qwen2VL-2B">SFT Point Expert</a> |
