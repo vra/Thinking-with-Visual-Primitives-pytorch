@@ -325,7 +325,7 @@ Preserves counting ability with accurate boxes.
 ### Installation
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/Thinking-with-Visual-Primitives-pytorch.git
+git clone https://github.com/vra/Thinking-with-Visual-Primitives-pytorch.git
 cd Thinking-with-Visual-Primitives-pytorch
 
 conda create -n vprim python=3.10 -y
