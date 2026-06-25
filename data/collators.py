@@ -205,6 +205,10 @@ class ConversationCollator:
             result["pixel_values"] = inputs["pixel_values"]
         if "image_grid_thw" in inputs:
             result["image_grid_thw"] = inputs["image_grid_thw"]
+        if "video_grid_thw" in inputs:
+            result["video_grid_thw"] = inputs["video_grid_thw"]
+        if "mm_token_type_ids" in inputs:
+            result["mm_token_type_ids"] = inputs["mm_token_type_ids"]
         return result
 
     def _call_simple(self, batch_samples: List[dict]) -> Dict[str, torch.Tensor]:

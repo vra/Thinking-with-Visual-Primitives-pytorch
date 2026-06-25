@@ -53,7 +53,7 @@ def _get_generate_kwargs(batch, device):
     pixel_values = batch.get("pixel_values")
     if pixel_values is not None:
         kwargs["pixel_values"] = pixel_values.to(device)
-    for key in ("image_grid_thw", "image_rotary_emb", "pixel_values_videos", "video_grid_thw"):
+    for key in ("image_grid_thw", "image_rotary_emb", "pixel_values_videos", "video_grid_thw", "mm_token_type_ids"):
         if key in batch:
             kwargs[key] = batch[key].to(device)
     return kwargs
