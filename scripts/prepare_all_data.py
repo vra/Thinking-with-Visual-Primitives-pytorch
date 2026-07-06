@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import List, Tuple
 from collections import defaultdict
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageColor
 from tqdm import tqdm
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -283,6 +283,89 @@ def generate_counting_data(annotations: dict, output_path: Path, num_samples: in
 # 4. Spatial Reasoning 数据（CLEVR 风格，程序生成）
 # ---------------------------------------------------------------------------
 
+def mix_color(color: str, target: Tuple[int, int, int], ratio: float) -> Tuple[int, int, int]:
+    """把命名颜色按比例混合到目标 RGB 颜色上，用来模拟变亮/变暗。"""
+    base = ImageColor.getrgb(color)
+    return tuple(int(base[i] * (1 - ratio) + target[i] * ratio) for i in range(3))
+
+
+def draw_shape(
+    draw: ImageDraw.ImageDraw,
+    shape: str,
+    x: int,
+    y: int,
+    obj_w: int,
+    obj_h: int,
+    fill,
+    outline,
+    width: int = 2,
+):
+    """按形状画主体。三角形需要手动画边，其余形状 PIL 可以直接画边框。"""
+    bbox = [x, y, x + obj_w, y + obj_h]
+    if shape == "circle":
+        draw.ellipse(bbox, fill=fill, outline=outline, width=width)
+    elif shape == "rectangle":
+        draw.rectangle(bbox, fill=fill, outline=outline, width=width)
+    else:
+        points = [(x + obj_w // 2, y), (x, y + obj_h), (x + obj_w, y + obj_h)]
+        draw.polygon(points, fill=fill)
+        draw.line(points + [points[0]], fill=outline, width=width)
+
+
+def draw_object(
+    draw: ImageDraw.ImageDraw,
+    shape: str,
+    color: str,
+    material: str,
+    x: int,
+    y: int,
+    obj_w: int,
+    obj_h: int,
+):
+    """画一个 CLEVR 风格物体，并把 material 显式编码进视觉样式。"""
+    if material == "metal":
+        # metal: 先画一个轻微偏移的灰色阴影，再画浅色主体，最后叠白色高光。
+        draw_shape(draw, shape, x + 3, y + 3, obj_w, obj_h, fill=(95, 95, 95), outline=(95, 95, 95), width=1)
+        draw_shape(
+            draw,
+            shape,
+            x,
+            y,
+            obj_w,
+            obj_h,
+            fill=mix_color(color, (255, 255, 255), 0.35),
+            outline=mix_color(color, (0, 0, 0), 0.35),
+            width=2,
+        )
+
+        # 三角形的左上角不一定在物体内部，所以高光放到中轴附近，避免越过斜边。
+        if shape == "triangle":
+            hx1 = x + obj_w // 2
+            hy1 = y + max(5, obj_h // 5)
+            hx2 = x + obj_w // 2 + max(4, obj_w // 10)
+            hy2 = y + max(8, obj_h // 3)
+        else:
+            hx1 = x + max(4, obj_w // 6)
+            hy1 = y + max(4, obj_h // 6)
+            hx2 = x + max(8, obj_w // 2)
+            hy2 = y + max(6, obj_h // 4)
+        draw.line([(hx1, hy1), (hx2, hy2)], fill="white", width=3)
+        draw.ellipse([hx1 - 2, hy1 - 2, hx1 + 4, hy1 + 4], fill="white")
+    else:
+        # rubber: 不加高光，只用略暗的哑光填充和粗黑边，和 metal 区分开。
+        draw_shape(
+            draw,
+            shape,
+            x,
+            y,
+            obj_w,
+            obj_h,
+            fill=mix_color(color, (0, 0, 0), 0.05),
+            outline="black",
+            width=4,
+        )
+
+
 def generate_clevr_image(size: int = 400) -> Image.Image:
     """生成一张 CLEVR 风格的简单几何体图片。"""
     img = Image.new("RGB", (size, size), "lightgray")
@@ -302,13 +385,7 @@ def generate_clevr_image(size: int = 400) -> Image.Image:
         shape = random.choice(shapes)
         material = random.choice(materials)
 
-        if shape == "circle":
-            draw.ellipse([x, y, x + obj_w, y + obj_h], fill=color, outline="black")
-        elif shape == "rectangle":
-            draw.rectangle([x, y, x + obj_w, y + obj_h], fill=color, outline="black")
-        else:
-            # triangle
-            draw.polygon([(x + obj_w // 2, y), (x, y + obj_h), (x + obj_w, y + obj_h)], fill=color, outline="black")
+        draw_object(draw, shape, color, material, x, y, obj_w, obj_h)
 
         # normalized bbox
         nx1 = normalize_coordinate(x, size)
